@@ -22,6 +22,7 @@ import {
   getEventEmoji,
   toGameEvent,
 } from '@/lib/event-triggers'
+import { GAME_EVENTS, DEMO_GAMES } from '@/lib/campaigns'
 
 interface EventTriggersProps {
   onEventSelect?: (event: { type: string; description: string; timestamp: Date; team?: string }) => void
@@ -151,16 +152,45 @@ Q4 2:30 - FUMBLE - Eagles - Pacheco forces turnover`
 
           {/* Paste Events Tab */}
           <TabsContent value="paste" className="space-y-3">
+            {/* Preset Game Selector */}
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Load preset game</Label>
+              <select
+                onChange={(e) => {
+                  const gameId = e.target.value
+                  if (gameId && GAME_EVENTS[gameId]) {
+                    const events = GAME_EVENTS[gameId].map((evt, i) => ({
+                      id: `${gameId}-${i}`,
+                      timestamp: evt.timestamp,
+                      type: evt.type as any,
+                      description: evt.description,
+                      team: evt.team,
+                    }))
+                    saveCustomEvents(events)
+                    setSavedEvents(events)
+                    setPasteText('')
+                    setParsedEvents([])
+                  }
+                }}
+                className="w-full text-sm border border-input rounded-md px-3 py-2 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                defaultValue=""
+              >
+                <option value="">Select a game...</option>
+                {DEMO_GAMES.filter(g => GAME_EVENTS[g.id]).map(game => (
+                  <option key={game.id} value={game.id}>{game.name}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="text-xs text-muted-foreground text-center">— or paste custom events —</div>
+            
             <div>
               <textarea
                 value={pasteText}
                 onChange={(e) => setPasteText(e.target.value)}
                 placeholder={sampleText}
-                className="w-full text-xs font-mono border border-input rounded-md px-3 py-2 h-32 resize-none focus:outline-none focus:ring-1 focus:ring-ring bg-background"
+                className="w-full text-xs font-mono border border-input rounded-md px-3 py-2 h-24 resize-none focus:outline-none focus:ring-1 focus:ring-ring bg-background"
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                Format: Q1 12:30 - TOUCHDOWN - Team - Description
-              </p>
             </div>
 
             <div className="flex gap-2">
@@ -203,30 +233,42 @@ Q4 2:30 - FUMBLE - Eagles - Pacheco forces turnover`
               </div>
             )}
 
-            {/* Saved Events */}
+            {/* Saved Events - Clickable Trigger Buttons */}
             {savedEvents.length > 0 && (
               <>
                 <Separator />
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium">Saved Events ({savedEvents.length})</span>
+                  <span className="text-xs font-medium flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    Events Loaded ({savedEvents.length})
+                  </span>
                   <Button size="sm" variant="ghost" onClick={handleClear} className="h-6 px-2 text-xs text-destructive hover:text-destructive">
                     <Trash2 className="w-3 h-3 mr-1" />
                     Clear
                   </Button>
                 </div>
-                <div className="space-y-1 max-h-32 overflow-y-auto">
-                  {savedEvents.map((event) => (
+                <p className="text-xs text-muted-foreground">Click an event to trigger content generation:</p>
+                <div className="grid grid-cols-1 gap-1 max-h-48 overflow-y-auto">
+                  {savedEvents.map((event, idx) => (
                     <button
                       key={event.id}
                       onClick={() => handleEventClick(event)}
-                      className={`w-full text-left flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted transition-colors ${
-                        currentEventId === event.id ? 'bg-primary/10 border border-primary/20' : ''
+                      className={`w-full text-left flex items-center gap-2 px-3 py-2 text-xs rounded-md border transition-all hover:bg-primary/5 hover:border-primary/30 ${
+                        currentEventId === event.id 
+                          ? 'bg-primary/10 border-primary/40 ring-1 ring-primary/20' 
+                          : 'border-border bg-muted/30'
                       }`}
                     >
-                      <span>{getEventEmoji(event.type)}</span>
-                      <span className="font-medium">{event.type}</span>
-                      {event.team && <span className="text-muted-foreground">• {event.team}</span>}
-                      <span className="truncate flex-1 text-muted-foreground">{event.description}</span>
+                      <span className="text-base">{getEventEmoji(event.type)}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{event.type}</span>
+                          {event.team && <Badge variant="outline" className="text-[10px] px-1">{event.team}</Badge>}
+                          {event.timestamp && <span className="text-muted-foreground font-mono">{event.timestamp}</span>}
+                        </div>
+                        <p className="text-muted-foreground truncate">{event.description}</p>
+                      </div>
+                      <Zap className="w-4 h-4 text-muted-foreground" />
                     </button>
                   ))}
                 </div>
