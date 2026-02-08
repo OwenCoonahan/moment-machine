@@ -18,20 +18,12 @@ export default function LandingPage() {
             </div>
             <span className="font-semibold text-zinc-900">Moment Machine</span>
           </div>
-          <div className="flex items-center gap-4 text-sm">
-            <Link 
-              href="/sms" 
-              className="text-zinc-600 hover:text-zinc-900 transition-colors"
-            >
-              SMS Lab →
-            </Link>
-            <Link 
-              href="/dashboard" 
-              className="text-zinc-600 hover:text-zinc-900 transition-colors"
-            >
-              Dashboard →
-            </Link>
-          </div>
+          <Link 
+            href="/dashboard" 
+            className="text-sm text-zinc-600 hover:text-zinc-900 transition-colors"
+          >
+            Dashboard →
+          </Link>
         </div>
       </nav>
 
