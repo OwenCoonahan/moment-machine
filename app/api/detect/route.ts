@@ -1,72 +1,111 @@
 import { NextResponse } from 'next/server'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
-// Event detection API
-// In production, this would use Gemini 2.0 Flash to analyze video frames
+const GOOGLE_AI_API_KEY = process.env.GOOGLE_AI_API_KEY
+
+// Initialize Gemini
+const genAI = GOOGLE_AI_API_KEY ? new GoogleGenerativeAI(GOOGLE_AI_API_KEY) : null
 
 export async function POST(request: Request) {
   try {
-    const { frameData, videoUrl } = await request.json()
+    const { imageBase64, videoUrl, simulateEvent } = await request.json()
 
-    // In production:
-    // 1. Receive video frame or YouTube URL
-    // 2. Send to Gemini 2.0 Flash for multimodal analysis
-    // 3. Return detected event with confidence score
+    // If simulating, return a random event
+    if (simulateEvent) {
+      const events = [
+        { type: 'TOUCHDOWN', description: 'Chiefs score touchdown - Mahomes to Kelce, 15 yard pass', confidence: 0.97 },
+        { type: 'TOUCHDOWN', description: 'Eagles score touchdown - Hurts rushing TD', confidence: 0.96 },
+        { type: 'FUMBLE', description: 'Fumble recovered by defense on the 20 yard line', confidence: 0.94 },
+        { type: 'INTERCEPTION', description: 'Pass intercepted in the red zone', confidence: 0.92 },
+        { type: 'BIG_PLAY', description: '45-yard completion to the 10-yard line', confidence: 0.89 },
+        { type: 'FIELD_GOAL', description: 'Field goal is GOOD from 42 yards', confidence: 0.95 },
+        { type: 'SACK', description: 'Quarterback sacked for a loss of 8 yards', confidence: 0.91 },
+      ]
+      
+      const event = events[Math.floor(Math.random() * events.length)]
+      return NextResponse.json({
+        detected: true,
+        event: {
+          ...event,
+          timestamp: new Date().toISOString(),
+        },
+        source: 'simulation'
+      })
+    }
 
-    // Simulated event detection
-    const events = [
-      { type: 'TOUCHDOWN', description: 'Touchdown scored', confidence: 0.97 },
-      { type: 'FUMBLE', description: 'Ball fumbled', confidence: 0.94 },
-      { type: 'INTERCEPTION', description: 'Pass intercepted', confidence: 0.92 },
-      { type: 'BIG_PLAY', description: 'Big play detected', confidence: 0.89 },
-      { type: 'HALFTIME', description: 'Halftime show', confidence: 0.99 },
-      { type: 'FIELD_GOAL', description: 'Field goal attempt', confidence: 0.91 },
-      { type: 'SACK', description: 'Quarterback sacked', confidence: 0.88 },
-    ]
+    // Real Gemini detection
+    if (imageBase64 && genAI) {
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+      
+      const result = await model.generateContent([
+        {
+          inlineData: {
+            data: imageBase64,
+            mimeType: 'image/jpeg'
+          }
+        },
+        `You are analyzing a frame from an American football game (NFL Super Bowl).
+        
+Detect if any significant event is occurring in this frame:
+- TOUCHDOWN: A team just scored or is scoring a touchdown (celebration, ball crossing goal line)
+- FUMBLE: The ball has been fumbled (loose ball, scramble)
+- INTERCEPTION: A pass was just intercepted (defensive player catching ball)
+- BIG_PLAY: A significant play (20+ yards, player running with ball downfield)
+- FIELD_GOAL: A field goal attempt (kicker, ball in air toward posts)
+- SACK: Quarterback being tackled behind line of scrimmage
+- HALFTIME: Halftime show or break (entertainment, not game action)
+- CELEBRATION: Team/crowd celebrating (may indicate recent score)
+- NONE: Normal gameplay, no significant event
 
-    // Simulate detection with random event
-    const detectedEvent = events[Math.floor(Math.random() * events.length)]
+Respond with ONLY valid JSON in this exact format:
+{"event": "EVENT_TYPE", "description": "brief 10-word max description", "confidence": 0.85}
 
-    return NextResponse.json({
-      detected: true,
-      event: {
-        ...detectedEvent,
-        timestamp: new Date().toISOString(),
+If no significant event, use: {"event": "NONE", "description": "Normal gameplay", "confidence": 0.5}`
+      ])
+      
+      try {
+        const text = result.response.text().trim()
+        // Extract JSON from response (handle markdown code blocks)
+        const jsonMatch = text.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0])
+          
+          if (parsed.event && parsed.event !== 'NONE') {
+            return NextResponse.json({
+              detected: true,
+              event: {
+                type: parsed.event,
+                description: parsed.description,
+                confidence: parsed.confidence,
+                timestamp: new Date().toISOString(),
+              },
+              source: 'gemini'
+            })
+          }
+        }
+      } catch (parseError) {
+        console.error('Failed to parse Gemini response:', parseError)
       }
+    }
+
+    // No event detected
+    return NextResponse.json({
+      detected: false,
+      event: null,
+      source: genAI ? 'gemini' : 'none'
     })
+
   } catch (error) {
     console.error('Detection error:', error)
     return NextResponse.json({ error: 'Detection failed' }, { status: 500 })
   }
 }
 
-// Example Gemini integration (uncomment when API key available)
-/*
-import { GoogleGenerativeAI } from '@google/generative-ai'
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!)
-
-async function detectEventWithGemini(imageBase64: string) {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
-  
-  const result = await model.generateContent([
-    {
-      inlineData: {
-        data: imageBase64,
-        mimeType: 'image/jpeg'
-      }
-    },
-    `Analyze this football game frame. Detect if any significant event is occurring:
-    - TOUCHDOWN: A team scored a touchdown
-    - FUMBLE: The ball was fumbled
-    - INTERCEPTION: A pass was intercepted
-    - BIG_PLAY: A significant play (20+ yards)
-    - FIELD_GOAL: A field goal attempt
-    - HALFTIME: Halftime show or break
-    - NONE: No significant event
-    
-    Return JSON: {"event": "EVENT_TYPE", "description": "brief description", "confidence": 0.0-1.0}`
-  ])
-  
-  return JSON.parse(result.response.text())
+// GET endpoint for health check
+export async function GET() {
+  return NextResponse.json({ 
+    status: 'ok',
+    geminiEnabled: !!genAI,
+    timestamp: new Date().toISOString()
+  })
 }
-*/
