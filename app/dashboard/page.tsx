@@ -30,7 +30,7 @@ import { CampaignModal } from '@/components/campaign-modal'
 import { AvatarModal } from '@/components/avatar-modal'
 
 // Bot/Markets imports
-import { BotProfile, BOTS, getBotsWithStats, getLeaderboard, simulateBotReactions, Trade, getRecentTrades, seedDemoTrades } from '@/lib/bots'
+import { BotProfile, BOTS, MARKETS, getBotsWithStats, getLeaderboard, simulateBotReactions, Trade, getRecentTrades, seedDemoTrades } from '@/lib/bots'
 import { BotCard } from '@/components/bot-card'
 import { TradeFeed } from '@/components/trade-feed'
 
@@ -1101,27 +1101,19 @@ function DashboardContent() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-lg font-semibold">Prediction Markets</h2>
-                    <p className="text-sm text-muted-foreground">Brand bots competing on game predictions</p>
+                    <p className="text-sm text-muted-foreground">PizzaShack bots trading on Super Bowl markets</p>
                   </div>
                   <Button 
                     onClick={async () => {
-                      // Simulate an event to trigger bot reactions
                       const events = ['TOUCHDOWN', 'INTERCEPTION', 'FUMBLE', 'BIG_PLAY']
                       const randomEvent = events[Math.floor(Math.random() * events.length)]
                       try {
                         await fetch('/api/bots/trade', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ 
-                            action: 'simulate',
-                            eventType: randomEvent,
-                            team: Math.random() > 0.5 ? 'KC' : 'PHI'
-                          })
+                          body: JSON.stringify({ action: 'simulate', eventType: randomEvent, team: Math.random() > 0.5 ? 'KC' : 'PHI' })
                         })
-                        // Refresh would happen via state update
-                      } catch (e) {
-                        console.error('Simulate error:', e)
-                      }
+                      } catch (e) { console.error('Simulate error:', e) }
                     }}
                     variant="outline"
                     className="gap-2"
@@ -1132,32 +1124,106 @@ function DashboardContent() {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Trade Feed */}
-                  <div className="lg:col-span-2">
+                  {/* Left: Super Bowl Markets */}
+                  <div className="lg:col-span-2 space-y-4">
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium flex items-center gap-2">
+                          <TrendingUp className="w-4 h-4" />
+                          Super Bowl LIX Markets
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        {MARKETS.map(market => (
+                          <div key={market.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">{market.name}</p>
+                              <p className="text-xs text-muted-foreground">Vol: ${(market.volume / 1000000).toFixed(1)}M</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-lg font-bold font-mono">{(market.currentPrice * 100).toFixed(0)}¢</p>
+                              <p className="text-xs text-muted-foreground">{(market.currentPrice * 100).toFixed(0)}% odds</p>
+                            </div>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                    
+                    {/* Trade Feed */}
                     <Card>
                       <CardHeader className="pb-3">
                         <CardTitle className="text-sm font-medium">Live Trade Feed</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <TradeFeed trades={getRecentTrades(20)} showComments />
+                        <TradeFeed trades={getRecentTrades(10)} showComments />
                       </CardContent>
                     </Card>
                   </div>
 
-                  {/* Leaderboard */}
-                  <div>
+                  {/* Right: PizzaShack Stats */}
+                  <div className="space-y-4">
+                    {/* Activity Stats */}
                     <Card>
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium">Leaderboard</CardTitle>
+                        <CardTitle className="text-sm font-medium flex items-center gap-2">
+                          🍕 PizzaShack Bot Stats
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="text-center p-3 rounded-lg bg-muted/50">
+                            <p className="text-2xl font-bold font-mono">64</p>
+                            <p className="text-xs text-muted-foreground">Total Trades</p>
+                          </div>
+                          <div className="text-center p-3 rounded-lg bg-muted/50">
+                            <p className="text-2xl font-bold font-mono">142</p>
+                            <p className="text-xs text-muted-foreground">Comments</p>
+                          </div>
+                          <div className="text-center p-3 rounded-lg bg-muted/50">
+                            <p className="text-2xl font-bold font-mono">12.4K</p>
+                            <p className="text-xs text-muted-foreground">Impressions</p>
+                          </div>
+                          <div className="text-center p-3 rounded-lg bg-muted/50">
+                            <p className="text-2xl font-bold font-mono text-emerald-600">+$9.6K</p>
+                            <p className="text-xs text-muted-foreground">Total P&L</p>
+                          </div>
+                        </div>
+                        
+                        {/* Simple Activity Chart */}
+                        <div className="pt-2">
+                          <p className="text-xs text-muted-foreground mb-2">Activity (last 8 events)</p>
+                          <div className="flex items-end gap-1 h-16">
+                            {[3, 5, 2, 8, 4, 6, 9, 7].map((val, i) => (
+                              <div
+                                key={i}
+                                className="flex-1 bg-primary/20 hover:bg-primary/40 transition-colors rounded-t"
+                                style={{ height: `${val * 10}%` }}
+                              />
+                            ))}
+                          </div>
+                          <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                            <span>Q1</span>
+                            <span>Q2</span>
+                            <span>Q3</span>
+                            <span>Q4</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    {/* Leaderboard */}
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium">Bot Leaderboard</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-2">
-                        {getLeaderboard().slice(0, 5).map((bot, i) => (
+                        {getLeaderboard().slice(0, 3).map((bot, i) => (
                           <div key={bot.id} className="flex items-center gap-3 p-2 rounded-md bg-muted/50">
-                            <span className="text-lg">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`}</span>
+                            <span className="text-lg">{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</span>
                             <span className="text-lg">{bot.avatar}</span>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium truncate">{bot.name}</p>
-                              <p className="text-xs text-muted-foreground">{bot.winRate.toFixed(0)}% win rate</p>
+                              <p className="text-xs text-muted-foreground">{bot.winRate.toFixed(0)}% win</p>
                             </div>
                             <span className={`text-sm font-mono ${bot.totalPnL >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                               {bot.totalPnL >= 0 ? '+' : ''}${bot.totalPnL.toFixed(0)}
@@ -1167,13 +1233,6 @@ function DashboardContent() {
                       </CardContent>
                     </Card>
                   </div>
-                </div>
-
-                {/* Bot Cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  {getBotsWithStats().map(bot => (
-                    <BotCard key={bot.id} {...bot} />
-                  ))}
                 </div>
               </TabsContent>
             </Tabs>
