@@ -181,12 +181,12 @@ export default function SmsLabPage() {
       <header className="border-b border-zinc-200 bg-white">
         <div className="max-w-5xl mx-auto px-6 py-4">
           <h1 className="text-2xl font-semibold text-zinc-900">SMS Lab</h1>
-          <p className="text-sm text-zinc-500">Isolated workspace for targeted promo SMS flows.</p>
+          <p className="text-sm text-zinc-500">Targeted promo messaging based on live events.</p>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-6 grid gap-6">
-        <section className="bg-white border border-zinc-200 rounded-xl p-5 grid gap-4">
+      <main className="max-w-5xl mx-auto px-6 py-6 space-y-6">
+        <section className="bg-white border border-zinc-200 rounded-xl p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-zinc-900">Customer Data</h2>
             <button
@@ -197,7 +197,7 @@ export default function SmsLabPage() {
             </button>
           </div>
           <div className="grid md:grid-cols-2 gap-4">
-            <div className="grid gap-2">
+            <div className="space-y-2">
               <label className="text-xs uppercase tracking-wide text-zinc-500">Upload CSV</label>
               <input
                 type="file"
@@ -210,7 +210,7 @@ export default function SmsLabPage() {
               />
               <p className="text-xs text-zinc-400">Expected headers: id,name,phone,region,team_affinity,last_purchase_category,loyalty_tier,average_order_value,marketing_opt_in</p>
             </div>
-            <div className="grid gap-2">
+            <div className="space-y-2">
               <label className="text-xs uppercase tracking-wide text-zinc-500">Raw CSV Preview</label>
               <textarea
                 value={csvText}
@@ -218,19 +218,19 @@ export default function SmsLabPage() {
                   setCsvText(e.target.value)
                   setCustomers(parseCustomersCsv(e.target.value))
                 }}
-                className="h-28 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs"
+                className="h-28 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs"
               />
             </div>
           </div>
         </section>
 
-        <section className="bg-white border border-zinc-200 rounded-xl p-5 grid gap-4">
+        <section className="bg-white border border-zinc-200 rounded-xl p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-zinc-900">Segment Builder</h2>
             <span className="text-xs text-zinc-400">{summary.total} total · {summary.optedIn} opted-in</span>
           </div>
           <div className="grid md:grid-cols-3 gap-4">
-            <div className="grid gap-2">
+            <div className="space-y-2">
               <label className="text-xs uppercase tracking-wide text-zinc-500">Region</label>
               <select
                 value={region}
@@ -243,15 +243,15 @@ export default function SmsLabPage() {
                 <option value="All">All</option>
               </select>
             </div>
-            <div className="grid gap-2">
+            <div className="space-y-2">
               <label className="text-xs uppercase tracking-wide text-zinc-500">Segment Snapshot</label>
-              <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
+              <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700">
                 {summary.regions.join(', ') || 'No customers'}
               </div>
             </div>
-            <div className="grid gap-2">
+            <div className="space-y-2">
               <label className="text-xs uppercase tracking-wide text-zinc-500">Example Targets</label>
-              <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
+              <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-600">
                 {segment.slice(0, 4).map((c) => (
                   <div key={c.id}>{c.name} · {c.teamAffinity}</div>
                 ))}
@@ -260,10 +260,10 @@ export default function SmsLabPage() {
           </div>
         </section>
 
-        <section className="bg-white border border-zinc-200 rounded-xl p-5 grid gap-4">
+        <section className="bg-white border border-zinc-200 rounded-xl p-6 space-y-4">
           <h2 className="text-lg font-semibold text-zinc-900">Promo Draft</h2>
           <div className="grid md:grid-cols-2 gap-4">
-            <div className="grid gap-3">
+            <div className="space-y-3">
               <label className="text-xs uppercase tracking-wide text-zinc-500">Event Text</label>
               <input
                 value={draft.eventText}
@@ -277,7 +277,7 @@ export default function SmsLabPage() {
                 className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm"
               />
               <div className="grid grid-cols-2 gap-3">
-                <div className="grid gap-2">
+                <div className="space-y-2">
                   <label className="text-xs uppercase tracking-wide text-zinc-500">Business Name</label>
                   <input
                     value={draft.businessName}
@@ -285,7 +285,7 @@ export default function SmsLabPage() {
                     className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm"
                   />
                 </div>
-                <div className="grid gap-2">
+                <div className="space-y-2">
                   <label className="text-xs uppercase tracking-wide text-zinc-500">Business Type</label>
                   <input
                     value={draft.businessType}
@@ -295,14 +295,14 @@ export default function SmsLabPage() {
                 </div>
               </div>
             </div>
-            <div className="grid gap-2">
+            <div className="space-y-2">
               <label className="text-xs uppercase tracking-wide text-zinc-500">SMS Preview</label>
-              <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-3 text-sm text-zinc-700">
+              <div className="rounded-lg border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-700">
                 {message}
               </div>
               <div className="text-xs text-zinc-400">Length: {message.length} characters</div>
               {generatedPromo && (
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-600">
                   Generated promo: {generatedPromo}
                 </div>
               )}
@@ -315,7 +315,7 @@ export default function SmsLabPage() {
           </div>
         </section>
 
-        <section className="bg-white border border-zinc-200 rounded-xl p-5 grid gap-3">
+        <section className="bg-white border border-zinc-200 rounded-xl p-6 space-y-3">
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={handleSimulateSend}
@@ -327,14 +327,14 @@ export default function SmsLabPage() {
             <button
               onClick={handleDemoSend}
               disabled={isSending}
-              className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:bg-emerald-300"
+              className="border border-zinc-200 bg-white text-zinc-900 px-4 py-2 rounded-lg text-sm font-medium disabled:text-zinc-400"
             >
               {isSending ? 'Generating…' : `Demo send to ${DEMO_NUMBER}`}
             </button>
             <button
               onClick={handleTwilioSend}
               disabled={isSending}
-              className="bg-sky-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:bg-sky-300"
+              className="border border-zinc-200 bg-white text-zinc-900 px-4 py-2 rounded-lg text-sm font-medium disabled:text-zinc-400"
             >
               {isSending ? 'Calling…' : `Twilio call to ${DEMO_NUMBER}`}
             </button>
@@ -344,25 +344,25 @@ export default function SmsLabPage() {
             <button
               onClick={() => handleMmsSend(MMS_ASSET_URLS[0])}
               disabled={isSending}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:bg-indigo-300"
+              className="border border-zinc-200 bg-white text-zinc-900 px-4 py-2 rounded-lg text-sm font-medium disabled:text-zinc-400"
             >
               {isSending ? 'Sending…' : 'Send MMS (PNG)'}
             </button>
             <button
               onClick={() => handleMmsSend(MMS_ASSET_URLS[1])}
               disabled={isSending}
-              className="bg-fuchsia-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:bg-fuchsia-300"
+              className="border border-zinc-200 bg-white text-zinc-900 px-4 py-2 rounded-lg text-sm font-medium disabled:text-zinc-400"
             >
               {isSending ? 'Sending…' : 'Send MMS (GIF)'}
             </button>
             <span className="text-xs text-zinc-400">Uses Twilio-hosted media URLs for quick testing.</span>
           </div>
           {error && (
-            <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+            <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-700">
               {error}
             </div>
           )}
-          <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600 min-h-[60px]">
+          <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-600 min-h-[60px]">
             {log.length === 0 ? 'No sends yet.' : log.map((entry, i) => (
               <div key={`${entry}-${i}`}>{entry}</div>
             ))}
