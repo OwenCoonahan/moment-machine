@@ -588,6 +588,15 @@ function DashboardContent() {
         </div>
         
         <div className="flex items-center gap-4">
+          {/* Live Status Indicator */}
+          {customEvents.length > 0 && (
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-xs font-medium text-emerald-600">
+                {isEventPlaying ? 'Running Live' : `${customEvents.length} Events Ready`}
+              </span>
+            </div>
+          )}
           {gameStatus && (
             <div className="text-xs text-muted-foreground font-mono">
               {gameStatus.awayTeam.abbreviation} {gameStatus.awayTeam.score} - {gameStatus.homeTeam.abbreviation} {gameStatus.homeTeam.score} • Q{gameStatus.period} {gameStatus.clock}
