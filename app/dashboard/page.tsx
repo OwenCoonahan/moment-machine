@@ -3,12 +3,12 @@
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { 
-  Zap, Play, Pause, Settings, Download, Share2, 
+  Zap, Play, Pause, Settings, 
   Image as ImageIcon, Video, Type, BarChart3, 
   Check, Clock, AlertCircle, RefreshCw, Loader2,
-  Instagram, Twitter, Facebook, Youtube, Send,
-  ExternalLink
+  Send, ArrowLeft
 } from 'lucide-react'
+import Link from 'next/link'
 
 interface ContentItem {
   id: string
@@ -22,71 +22,50 @@ interface ContentItem {
 interface Brand {
   name: string
   domain: string
-  logo?: string
   colors: string[]
   voice: string
   industry: string
   loaded: boolean
 }
 
-interface Event {
+interface GameEvent {
   type: string
   description: string
   timestamp: Date
   confidence: number
 }
 
-// Brand extraction based on URL
+// Brand extraction
 function extractBrandFromUrl(url: string): Brand {
   try {
     const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`)
     const domain = urlObj.hostname.replace('www.', '')
     const brandName = domain.split('.')[0]
     
-    // Known brands database
     const knownBrands: Record<string, Partial<Brand>> = {
-      'chipotle': { name: 'Chipotle', colors: ['#441500', '#A81612', '#FFFFFF'], voice: 'Bold, fresh, food-forward', industry: 'restaurant' },
-      'mcdonalds': { name: "McDonald's", colors: ['#FFC72C', '#DA291C', '#27251F'], voice: 'Fun, family-friendly, classic', industry: 'restaurant' },
-      'starbucks': { name: 'Starbucks', colors: ['#00704A', '#1E3932', '#FFFFFF'], voice: 'Warm, inviting, premium', industry: 'cafe' },
-      'dominos': { name: "Domino's", colors: ['#006491', '#E31837', '#FFFFFF'], voice: 'Fast, reliable, fun', industry: 'restaurant' },
-      'buffalowildwings': { name: 'Buffalo Wild Wings', colors: ['#FFB612', '#000000', '#FFFFFF'], voice: 'Sports, bold, social', industry: 'sports bar' },
-      'applebees': { name: "Applebee's", colors: ['#C8102E', '#000000', '#FFFFFF'], voice: 'Neighborhood, friendly, American', industry: 'restaurant' },
-      'chilis': { name: "Chili's", colors: ['#00833E', '#C8102E', '#FFFFFF'], voice: 'Bold, flavorful, fun', industry: 'restaurant' },
-      'hooters': { name: 'Hooters', colors: ['#FF6600', '#000000', '#FFFFFF'], voice: 'Fun, sports, wings', industry: 'sports bar' },
-      'wingstop': { name: 'Wingstop', colors: ['#024731', '#FFD100', '#FFFFFF'], voice: 'Flavor, bold, craveable', industry: 'restaurant' },
-      'papajohns': { name: "Papa John's", colors: ['#C8102E', '#00653A', '#FFFFFF'], voice: 'Quality, fresh, better', industry: 'restaurant' },
+      'chipotle': { name: 'Chipotle', colors: ['#441500', '#A81612', '#FFFFFF'], voice: 'Bold, fresh, food-forward', industry: 'Restaurant' },
+      'mcdonalds': { name: "McDonald's", colors: ['#FFC72C', '#DA291C', '#27251F'], voice: 'Fun, family-friendly', industry: 'Restaurant' },
+      'starbucks': { name: 'Starbucks', colors: ['#00704A', '#1E3932', '#FFFFFF'], voice: 'Warm, inviting, premium', industry: 'Cafe' },
+      'dominos': { name: "Domino's", colors: ['#006491', '#E31837', '#FFFFFF'], voice: 'Fast, reliable, fun', industry: 'Restaurant' },
+      'buffalowildwings': { name: 'Buffalo Wild Wings', colors: ['#FFB612', '#000000'], voice: 'Sports, bold, social', industry: 'Sports Bar' },
+      'wingstop': { name: 'Wingstop', colors: ['#024731', '#FFD100'], voice: 'Flavor, bold, craveable', industry: 'Restaurant' },
     }
     
     const known = knownBrands[brandName.toLowerCase()]
     if (known) {
-      return {
-        name: known.name || brandName,
-        domain,
-        colors: known.colors || ['#22c55e', '#FFFFFF', '#000000'],
-        voice: known.voice || 'Professional and engaging',
-        industry: known.industry || 'business',
-        loaded: true
-      }
+      return { name: known.name || brandName, domain, colors: known.colors || [], voice: known.voice || '', industry: known.industry || 'Business', loaded: true }
     }
     
-    // Generic brand
     return {
       name: brandName.charAt(0).toUpperCase() + brandName.slice(1),
       domain,
-      colors: ['#22c55e', '#FFFFFF', '#18181b'],
-      voice: 'Professional, engaging, modern',
-      industry: 'business',
+      colors: ['#18181b', '#ffffff', '#71717a'],
+      voice: 'Professional, engaging',
+      industry: 'Business',
       loaded: true
     }
   } catch {
-    return {
-      name: 'Your Business',
-      domain: '',
-      colors: ['#22c55e', '#FFFFFF', '#18181b'],
-      voice: 'Professional and engaging',
-      industry: 'business',
-      loaded: false
-    }
+    return { name: '', domain: '', colors: [], voice: '', industry: '', loaded: false }
   }
 }
 
@@ -99,25 +78,26 @@ function DashboardContent() {
   const [isArmed, setIsArmed] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [content, setContent] = useState<ContentItem[]>([])
-  const [currentEvent, setCurrentEvent] = useState<Event | null>(null)
+  const [currentEvent, setCurrentEvent] = useState<GameEvent | null>(null)
   const [latency, setLatency] = useState(0)
   const [totalGenerated, setTotalGenerated] = useState(0)
   const [generationStartTime, setGenerationStartTime] = useState<Date | null>(null)
-  const [selectedContent, setSelectedContent] = useState<ContentItem | null>(null)
 
-  // Load saved brand from localStorage on mount
+  // Load saved brand
   useEffect(() => {
-    const saved = localStorage.getItem('momentMachineBrand')
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved)
-        setBrand(parsed)
-        setBusinessUrl(parsed.domain ? `https://${parsed.domain}` : '')
-      } catch {}
+    if (urlParam) {
+      const extracted = extractBrandFromUrl(urlParam)
+      setBrand(extracted)
+    } else {
+      const saved = localStorage.getItem('momentMachineBrand')
+      if (saved) {
+        try {
+          setBrand(JSON.parse(saved))
+        } catch {}
+      }
     }
-  }, [])
+  }, [urlParam])
 
-  // Extract brand from URL
   const handleExtractBrand = () => {
     if (!businessUrl) return
     const extracted = extractBrandFromUrl(businessUrl)
@@ -125,63 +105,46 @@ function DashboardContent() {
     localStorage.setItem('momentMachineBrand', JSON.stringify(extracted))
   }
 
-  // Simulate event detection
-  const detectEvent = useCallback((): Event => {
+  const detectEvent = useCallback((): GameEvent => {
     const events = [
-      { type: 'TOUCHDOWN', description: 'Chiefs score touchdown - Mahomes to Kelce, 15 yards', confidence: 0.97 },
-      { type: 'TOUCHDOWN', description: 'Eagles score touchdown - Hurts rushing TD, 3 yards', confidence: 0.96 },
-      { type: 'FUMBLE', description: 'Fumble recovered! Defense takes over at the 20', confidence: 0.94 },
-      { type: 'INTERCEPTION', description: 'PICKED OFF! Interception in the red zone', confidence: 0.92 },
-      { type: 'BIG PLAY', description: '45-yard bomb! First and goal!', confidence: 0.89 },
-      { type: 'FIELD GOAL', description: 'Field goal is GOOD from 47 yards!', confidence: 0.95 },
-      { type: 'SACK', description: 'SACKED! QB goes down for a loss of 8', confidence: 0.91 },
+      { type: 'TOUCHDOWN', description: 'Chiefs score — Mahomes to Kelce, 15 yards', confidence: 0.97 },
+      { type: 'TOUCHDOWN', description: 'Eagles score — Hurts rushing TD', confidence: 0.96 },
+      { type: 'FUMBLE', description: 'Fumble recovered at the 20 yard line', confidence: 0.94 },
+      { type: 'INTERCEPTION', description: 'Intercepted in the red zone!', confidence: 0.92 },
+      { type: 'FIELD GOAL', description: 'Field goal is good from 47 yards', confidence: 0.95 },
     ]
-    
     const baseEvent = events[Math.floor(Math.random() * events.length)]
-    const event: Event = { ...baseEvent, timestamp: new Date() }
+    const event: GameEvent = { ...baseEvent, timestamp: new Date() }
     setCurrentEvent(event)
     return event
   }, [])
 
-  // FAST content generation (simulation for demo speed)
-  const generateContent = useCallback(async (event: Event) => {
+  // Fast content generation
+  const generateContent = useCallback(async (event: GameEvent) => {
     setIsGenerating(true)
     const startTime = new Date()
     setGenerationStartTime(startTime)
     setContent([])
     setTotalGenerated(0)
     
-    const totalToGenerate = Math.floor(Math.random() * 400) + 400 // 400-800 pieces
+    const totalToGenerate = Math.floor(Math.random() * 300) + 500
     let generated = 0
+    const batchSize = 40
     
-    // Generate in FAST batches for visual effect
-    const batchSize = 50
-    const batches = Math.ceil(totalToGenerate / batchSize)
-    const batchDelay = 30 // 30ms between batches = ~1 second for 800 items
-    
-    for (let batch = 0; batch < batches; batch++) {
-      await new Promise(resolve => setTimeout(resolve, batchDelay))
+    while (generated < totalToGenerate) {
+      await new Promise(resolve => setTimeout(resolve, 25))
       
       const newItems: ContentItem[] = []
       for (let i = 0; i < batchSize && generated < totalToGenerate; i++) {
         generated++
         const typeRoll = Math.random()
-        const type: 'image' | 'video' | 'text' = typeRoll < 0.6 ? 'image' : typeRoll < 0.8 ? 'video' : 'text'
-        
-        const captions = [
-          `${event.type}! 🏈 ${brand.name} celebrates with you! Use code GAMEDAY for 15% off!`,
-          `That ${event.type} though! 😱 Come celebrate at ${brand.name}!`,
-          `${event.type} ENERGY! 💪 ${brand.name} has your back!`,
-          `DID YOU SEE THAT?! 🤯 ${brand.name} is going crazy!`,
-          `BIG ${event.type} MOMENT! 🏆 Special deals at ${brand.name}!`,
-        ]
+        const type: 'image' | 'video' | 'text' = typeRoll < 0.6 ? 'image' : typeRoll < 0.85 ? 'video' : 'text'
         
         newItems.push({
-          id: `content-${batch}-${i}`,
+          id: `c-${generated}`,
           type,
           status: 'ready',
-          url: type === 'image' ? `https://picsum.photos/400/400?random=${batch}-${i}` : undefined,
-          caption: captions[Math.floor(Math.random() * captions.length)],
+          caption: `${event.type}! ${brand.name} celebrates with you! 🏈`,
           platform: ['instagram', 'twitter', 'tiktok', 'facebook'][Math.floor(Math.random() * 4)]
         })
       }
@@ -191,120 +154,103 @@ function DashboardContent() {
     }
     
     setIsGenerating(false)
-    const endTime = new Date()
-    setLatency(Math.round((endTime.getTime() - startTime.getTime()) / 1000))
+    setLatency(Math.round((Date.now() - startTime.getTime()) / 1000))
   }, [brand.name])
 
-  // Trigger generation manually
   const triggerGeneration = () => {
+    if (!brand.loaded) return
     const event = detectEvent()
     generateContent(event)
   }
 
-  // Update latency counter during generation
   useEffect(() => {
     if (!isGenerating || !generationStartTime) return
-    
     const interval = setInterval(() => {
       setLatency(Math.round((Date.now() - generationStartTime.getTime()) / 1000))
     }, 100)
-    
     return () => clearInterval(interval)
   }, [isGenerating, generationStartTime])
 
   const imageCount = content.filter(c => c.type === 'image').length
   const videoCount = content.filter(c => c.type === 'video').length
-  const textCount = content.filter(c => c.type === 'text').length
 
   return (
-    <div className="min-h-screen bg-dark-900">
+    <div className="min-h-screen bg-white">
       {/* Header */}
-      <header className="border-b border-dark-600 bg-dark-800/50 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-accent rounded-xl flex items-center justify-center">
-                <Zap className="w-6 h-6 text-white" />
+      <header className="border-b border-zinc-100 bg-white sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link href="/" className="text-zinc-400 hover:text-zinc-600 transition-colors">
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 bg-zinc-900 rounded-md flex items-center justify-center">
+                <Zap className="w-4 h-4 text-white" />
               </div>
-              <div>
-                <h1 className="font-semibold text-lg">Moment Machine</h1>
-                <p className="text-sm text-zinc-400">Dashboard</p>
-              </div>
+              <span className="font-medium text-zinc-900">Moment Machine</span>
             </div>
-            
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 bg-dark-700 rounded-lg px-4 py-2">
-                <div className={`w-2 h-2 rounded-full ${isArmed ? 'bg-accent animate-pulse' : 'bg-zinc-500'}`}></div>
-                <span className="text-sm font-medium">{isArmed ? 'ARMED' : 'STANDBY'}</span>
-              </div>
-              <button className="p-2 hover:bg-dark-700 rounded-lg transition-colors">
-                <Settings className="w-5 h-5 text-zinc-400" />
-              </button>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm ${isArmed ? 'bg-emerald-50 text-emerald-700' : 'bg-zinc-100 text-zinc-500'}`}>
+              <div className={`status-dot ${isArmed ? 'armed bg-emerald-500' : 'bg-zinc-400'}`}></div>
+              {isArmed ? 'Armed' : 'Standby'}
             </div>
           </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-12 gap-6">
+      <div className="max-w-6xl mx-auto px-6 py-8">
+        <div className="grid grid-cols-12 gap-8">
           
-          {/* Left Column - Setup & Controls */}
+          {/* Left Column */}
           <div className="col-span-12 lg:col-span-4 space-y-6">
             
             {/* Brand Setup */}
-            <div className="bg-dark-800 border border-dark-600 rounded-2xl p-6">
-              <h2 className="font-semibold mb-4 flex items-center gap-2">
-                <div className="w-6 h-6 bg-accent/10 rounded-lg flex items-center justify-center">
-                  <span className="text-accent text-sm">1</span>
-                </div>
-                Brand Setup
-              </h2>
+            <div className="bg-white border border-zinc-200 rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xs font-medium text-zinc-400 uppercase tracking-wide">Step 1</span>
+              </div>
+              <h3 className="font-medium text-zinc-900 mb-4">Brand Setup</h3>
               
               <div className="space-y-4">
-                <div>
-                  <label className="text-sm text-zinc-400 mb-2 block">Business URL</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="url"
-                      value={businessUrl}
-                      onChange={(e) => setBusinessUrl(e.target.value)}
-                      placeholder="https://yourbusiness.com"
-                      className="flex-1 bg-dark-700 border border-dark-600 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-accent transition-colors"
-                    />
-                    <button
-                      onClick={handleExtractBrand}
-                      className="bg-accent hover:bg-accent-dim text-white px-4 py-3 rounded-lg transition-colors font-medium"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                    </button>
-                  </div>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={businessUrl}
+                    onChange={(e) => setBusinessUrl(e.target.value)}
+                    placeholder="yourbusiness.com"
+                    className="flex-1 bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
+                  />
+                  <button
+                    onClick={handleExtractBrand}
+                    className="bg-zinc-900 hover:bg-zinc-800 text-white px-3 py-2.5 rounded-lg transition-colors"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </button>
                 </div>
                 
                 {brand.loaded && (
-                  <div className="bg-dark-700 rounded-xl p-4 space-y-3 animate-fade-in">
+                  <div className="bg-zinc-50 rounded-lg p-4 space-y-2 animate-fade-in">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-zinc-400">Brand</span>
-                      <span className="font-semibold text-accent">{brand.name}</span>
+                      <span className="text-sm text-zinc-500">Brand</span>
+                      <span className="font-medium text-zinc-900">{brand.name}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-zinc-400">Industry</span>
-                      <span className="text-sm capitalize">{brand.industry}</span>
+                      <span className="text-sm text-zinc-500">Industry</span>
+                      <span className="text-sm text-zinc-700">{brand.industry}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-zinc-400">Colors</span>
+                      <span className="text-sm text-zinc-500">Colors</span>
                       <div className="flex gap-1">
-                        {brand.colors.map((color, i) => (
-                          <div key={i} className="w-5 h-5 rounded-full border border-dark-500" style={{ backgroundColor: color }}></div>
+                        {brand.colors.slice(0, 3).map((color, i) => (
+                          <div key={i} className="w-4 h-4 rounded-full border border-zinc-200" style={{ backgroundColor: color }}></div>
                         ))}
                       </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-zinc-400">Voice</span>
-                      <span className="text-sm text-right max-w-[180px]">{brand.voice}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-accent text-sm pt-2 border-t border-dark-600">
-                      <Check className="w-4 h-4" />
-                      Brand extracted successfully
+                    <div className="flex items-center gap-1.5 text-emerald-600 text-sm pt-2">
+                      <Check className="w-3.5 h-3.5" />
+                      Ready
                     </div>
                   </div>
                 )}
@@ -312,33 +258,29 @@ function DashboardContent() {
             </div>
 
             {/* Event Detection */}
-            <div className="bg-dark-800 border border-dark-600 rounded-2xl p-6">
-              <h2 className="font-semibold mb-4 flex items-center gap-2">
-                <div className="w-6 h-6 bg-accent/10 rounded-lg flex items-center justify-center">
-                  <span className="text-accent text-sm">2</span>
-                </div>
-                Event Detection
-              </h2>
+            <div className="bg-white border border-zinc-200 rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xs font-medium text-zinc-400 uppercase tracking-wide">Step 2</span>
+              </div>
+              <h3 className="font-medium text-zinc-900 mb-4">Event Detection</h3>
               
-              <div className="space-y-4">
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setIsArmed(!isArmed)}
-                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
-                      isArmed 
-                        ? 'bg-accent text-white glow-accent' 
-                        : 'bg-dark-600 hover:bg-dark-500'
-                    }`}
-                  >
-                    {isArmed ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                    {isArmed ? 'Disarm' : 'Arm System'}
-                  </button>
-                </div>
+              <div className="space-y-3">
+                <button
+                  onClick={() => setIsArmed(!isArmed)}
+                  className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${
+                    isArmed 
+                      ? 'bg-emerald-500 text-white' 
+                      : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
+                  }`}
+                >
+                  {isArmed ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                  {isArmed ? 'Disarm' : 'Arm System'}
+                </button>
                 
                 <button
                   onClick={triggerGeneration}
                   disabled={!brand.loaded || isGenerating}
-                  className="w-full bg-accent hover:bg-accent-dim disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
+                  className="w-full bg-zinc-900 hover:bg-zinc-800 disabled:bg-zinc-200 disabled:text-zinc-400 text-white px-4 py-2.5 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-colors"
                 >
                   {isGenerating ? (
                     <>
@@ -348,210 +290,121 @@ function DashboardContent() {
                   ) : (
                     <>
                       <Zap className="w-4 h-4" />
-                      Trigger Demo Event
+                      Trigger Demo
                     </>
                   )}
                 </button>
                 
                 {currentEvent && (
-                  <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 animate-fade-in">
-                    <div className="flex items-center gap-2 text-accent font-semibold mb-2">
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 animate-fade-in">
+                    <div className="flex items-center gap-2 text-amber-700 font-medium text-sm mb-1">
                       <AlertCircle className="w-4 h-4" />
                       {currentEvent.type}
                     </div>
-                    <p className="text-sm text-zinc-300">{currentEvent.description}</p>
-                    <p className="text-xs text-zinc-500 mt-2">
-                      Confidence: {(currentEvent.confidence * 100).toFixed(0)}%
-                    </p>
+                    <p className="text-sm text-amber-600">{currentEvent.description}</p>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Platform Queue */}
-            <div className="bg-dark-800 border border-dark-600 rounded-2xl p-6">
-              <h2 className="font-semibold mb-4 flex items-center gap-2">
-                <div className="w-6 h-6 bg-accent/10 rounded-lg flex items-center justify-center">
-                  <span className="text-accent text-sm">3</span>
-                </div>
-                Deployment Queue
-              </h2>
+            {/* Deploy */}
+            <div className="bg-white border border-zinc-200 rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xs font-medium text-zinc-400 uppercase tracking-wide">Step 3</span>
+              </div>
+              <h3 className="font-medium text-zinc-900 mb-4">Deploy</h3>
               
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { name: 'Instagram', icon: Instagram, count: Math.floor(totalGenerated * 0.25) },
-                  { name: 'Twitter', icon: Twitter, count: Math.floor(totalGenerated * 0.3) },
-                  { name: 'TikTok', icon: Video, count: Math.floor(totalGenerated * 0.25) },
-                  { name: 'Facebook', icon: Facebook, count: Math.floor(totalGenerated * 0.2) },
-                ].map((platform) => (
-                  <div key={platform.name} className="bg-dark-700 rounded-xl p-4 text-center">
-                    <platform.icon className="w-5 h-5 mx-auto mb-2 text-zinc-400" />
-                    <div className="font-semibold counter">{platform.count}</div>
-                    <div className="text-xs text-zinc-500">{platform.name}</div>
+              <div className="grid grid-cols-4 gap-2 mb-4">
+                {['IG', 'TW', 'TT', 'FB'].map((p, i) => (
+                  <div key={p} className="bg-zinc-50 rounded-lg p-2 text-center">
+                    <div className="font-medium text-zinc-900 text-sm counter">
+                      {Math.floor(totalGenerated * [0.25, 0.3, 0.25, 0.2][i])}
+                    </div>
+                    <div className="text-xs text-zinc-400">{p}</div>
                   </div>
                 ))}
               </div>
               
               <button 
                 disabled={totalGenerated === 0}
-                className="w-full mt-4 bg-accent hover:bg-accent-dim disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
+                className="w-full bg-zinc-900 hover:bg-zinc-800 disabled:bg-zinc-200 disabled:text-zinc-400 text-white px-4 py-2.5 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-colors"
               >
                 <Send className="w-4 h-4" />
-                Deploy All Content
+                Deploy All
               </button>
             </div>
           </div>
 
-          {/* Right Column - Content Display */}
+          {/* Right Column */}
           <div className="col-span-12 lg:col-span-8 space-y-6">
             
-            {/* Stats Bar */}
+            {/* Stats */}
             <div className="grid grid-cols-4 gap-4">
-              <div className="bg-dark-800 border border-dark-600 rounded-xl p-4">
-                <div className="text-sm text-zinc-400 mb-1 flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4" />
-                  Generated
+              {[
+                { label: 'Generated', value: totalGenerated, icon: BarChart3, highlight: true },
+                { label: 'Latency', value: `${latency}s`, icon: Clock },
+                { label: 'Images', value: imageCount, icon: ImageIcon },
+                { label: 'Videos', value: videoCount, icon: Video },
+              ].map((stat) => (
+                <div key={stat.label} className="bg-white border border-zinc-200 rounded-xl p-4">
+                  <div className="flex items-center gap-2 text-zinc-500 text-sm mb-1">
+                    <stat.icon className="w-4 h-4" />
+                    {stat.label}
+                  </div>
+                  <div className={`text-2xl font-semibold counter ${stat.highlight ? 'text-zinc-900' : 'text-zinc-700'}`}>
+                    {stat.value}
+                  </div>
                 </div>
-                <div className="text-3xl font-bold counter text-accent">{totalGenerated}</div>
-              </div>
-              <div className="bg-dark-800 border border-dark-600 rounded-xl p-4">
-                <div className="text-sm text-zinc-400 mb-1 flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  Latency
-                </div>
-                <div className={`text-3xl font-bold counter ${latency <= 45 ? 'text-accent' : 'text-yellow-500'}`}>{latency}s</div>
-              </div>
-              <div className="bg-dark-800 border border-dark-600 rounded-xl p-4">
-                <div className="text-sm text-zinc-400 mb-1 flex items-center gap-2">
-                  <ImageIcon className="w-4 h-4" />
-                  Images
-                </div>
-                <div className="text-3xl font-bold counter">{imageCount}</div>
-              </div>
-              <div className="bg-dark-800 border border-dark-600 rounded-xl p-4">
-                <div className="text-sm text-zinc-400 mb-1 flex items-center gap-2">
-                  <Video className="w-4 h-4" />
-                  Videos
-                </div>
-                <div className="text-3xl font-bold counter">{videoCount}</div>
-              </div>
+              ))}
             </div>
 
             {/* Content Grid */}
-            <div className="bg-dark-800 border border-dark-600 rounded-2xl p-6">
+            <div className="bg-white border border-zinc-200 rounded-xl p-5">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold">Generated Content</h2>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-zinc-400">{imageCount} images</span>
-                  <span className="text-zinc-600">•</span>
-                  <span className="text-zinc-400">{videoCount} videos</span>
-                  <span className="text-zinc-600">•</span>
-                  <span className="text-zinc-400">{textCount} text</span>
-                </div>
+                <h3 className="font-medium text-zinc-900">Generated Content</h3>
+                <span className="text-sm text-zinc-400">{content.length} items</span>
               </div>
               
               {content.length === 0 ? (
-                <div className="text-center py-16 text-zinc-500">
-                  <Zap className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                  <p>Enter your business URL and trigger an event</p>
-                  <p className="text-sm mt-1">Watch content explode in real-time</p>
+                <div className="text-center py-16 text-zinc-400">
+                  <Zap className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <p className="text-sm">Enter your URL and trigger an event</p>
                 </div>
               ) : (
                 <div className="content-grid" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                  {content.slice(0, 150).map((item, i) => (
+                  {content.slice(0, 200).map((item, i) => (
                     <div 
                       key={item.id} 
-                      className={`content-item cursor-pointer hover:border-accent transition-colors ${item.status === 'generating' ? 'generating' : ''}`}
-                      style={{ animationDelay: `${(i % 30) * 20}ms` }}
-                      onClick={() => setSelectedContent(item)}
+                      className="content-item animate-pop cursor-pointer"
+                      style={{ animationDelay: `${(i % 40) * 15}ms` }}
                     >
-                      {item.status === 'generating' ? (
-                        <Loader2 className="w-6 h-6 text-zinc-500 animate-spin" />
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center p-2">
-                          {item.type === 'image' && <ImageIcon className="w-6 h-6 text-accent mb-1" />}
-                          {item.type === 'video' && <Video className="w-6 h-6 text-blue-400 mb-1" />}
-                          {item.type === 'text' && <Type className="w-6 h-6 text-purple-400 mb-1" />}
-                          <span className="text-xs text-zinc-500">{item.type}</span>
-                        </div>
-                      )}
+                      {item.type === 'image' && <ImageIcon className="w-4 h-4 text-zinc-400" />}
+                      {item.type === 'video' && <Video className="w-4 h-4 text-blue-500" />}
+                      {item.type === 'text' && <Type className="w-4 h-4 text-purple-500" />}
                     </div>
                   ))}
-                  {content.length > 150 && (
-                    <div className="content-item bg-accent/20 border-accent/30 text-accent text-sm font-medium">
-                      +{content.length - 150}
+                  {content.length > 200 && (
+                    <div className="content-item bg-zinc-100 text-zinc-500 text-xs font-medium">
+                      +{content.length - 200}
                     </div>
                   )}
                 </div>
               )}
             </div>
 
-            {/* Analytics */}
+            {/* Summary */}
             {totalGenerated > 0 && (
-              <div className="bg-dark-800 border border-dark-600 rounded-2xl p-6 animate-fade-in">
-                <h2 className="font-semibold mb-4">Session Analytics</h2>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="text-center p-4 bg-dark-700 rounded-xl">
-                    <div className="text-3xl font-bold text-accent mb-1 counter">{totalGenerated}</div>
-                    <div className="text-sm text-zinc-400">Total Content</div>
-                  </div>
-                  <div className="text-center p-4 bg-dark-700 rounded-xl">
-                    <div className="text-3xl font-bold mb-1 counter">{latency}s</div>
-                    <div className="text-sm text-zinc-400">Generation Time</div>
-                  </div>
-                  <div className="text-center p-4 bg-dark-700 rounded-xl">
-                    <div className="text-3xl font-bold text-accent mb-1">$7M</div>
-                    <div className="text-sm text-zinc-400">Super Bowl Ad Cost</div>
-                  </div>
-                </div>
-                <div className="mt-4 p-4 bg-accent/10 border border-accent/30 rounded-xl">
-                  <p className="text-sm text-center">
-                    <span className="text-accent font-semibold">{brand.name}</span> just generated{' '}
-                    <span className="text-white font-semibold">{totalGenerated}</span> pieces of branded content 
-                    in <span className="text-white font-semibold">{latency} seconds</span>.
-                    <br />
-                    <span className="text-zinc-400">That's what Madison Avenue spends $7M and 6 months to do.</span>
-                  </p>
-                </div>
+              <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-5 animate-fade-in">
+                <p className="text-center text-sm text-zinc-600">
+                  <span className="font-medium text-zinc-900">{brand.name}</span> generated{' '}
+                  <span className="font-medium text-zinc-900">{totalGenerated}</span> content pieces in{' '}
+                  <span className="font-medium text-zinc-900">{latency}s</span>
+                </p>
               </div>
             )}
           </div>
         </div>
       </div>
-
-      {/* Content Preview Modal */}
-      {selectedContent && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setSelectedContent(null)}>
-          <div className="bg-dark-800 border border-dark-600 rounded-2xl p-6 max-w-md w-full" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold">Content Preview</h3>
-              <button onClick={() => setSelectedContent(null)} className="text-zinc-400 hover:text-white">×</button>
-            </div>
-            <div className="bg-dark-700 rounded-xl p-4 mb-4 aspect-square flex items-center justify-center">
-              {selectedContent.type === 'image' && <ImageIcon className="w-16 h-16 text-accent" />}
-              {selectedContent.type === 'video' && <Video className="w-16 h-16 text-blue-400" />}
-              {selectedContent.type === 'text' && <Type className="w-16 h-16 text-purple-400" />}
-            </div>
-            <div className="space-y-3">
-              <div>
-                <div className="text-sm text-zinc-400 mb-1">Caption</div>
-                <p className="text-sm">{selectedContent.caption}</p>
-              </div>
-              <div>
-                <div className="text-sm text-zinc-400 mb-1">Platform</div>
-                <span className="text-sm capitalize">{selectedContent.platform}</span>
-              </div>
-              <div>
-                <div className="text-sm text-zinc-400 mb-1">Hashtags</div>
-                <p className="text-sm text-accent">#SuperBowl #GameDay #{brand.name?.replace(/[^a-zA-Z]/g, '')}</p>
-              </div>
-            </div>
-            <button className="w-full mt-4 bg-accent hover:bg-accent-dim text-white px-4 py-3 rounded-lg font-semibold transition-colors">
-              Post Now
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -559,8 +412,8 @@ function DashboardContent() {
 export default function DashboardPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-dark-900 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
       </div>
     }>
       <DashboardContent />
