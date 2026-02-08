@@ -20,8 +20,8 @@ import { Separator } from '@/components/ui/separator'
 
 // Campaign & Avatar imports
 import { 
-  Campaign, getCampaigns, getActiveCampaign, setActiveCampaign as setActiveStoredCampaign,
-  getActiveCampaignId, incrementCampaignContentCount, GAME_EVENTS
+  Campaign, getCampaigns, getCampaign, getActiveCampaign, setActiveCampaign as setActiveStoredCampaign,
+  getActiveCampaignId, incrementCampaignContentCount, addAvatarToCampaign, GAME_EVENTS
 } from '@/lib/campaigns'
 import { Avatar, getAvatars, incrementAvatarContentCount, getAvatarPlaceholder } from '@/lib/avatars'
 import { CampaignList, CampaignCard, AddCampaignCard } from '@/components/campaign-card'
@@ -396,6 +396,15 @@ function DashboardContent() {
   }
   
   const handleAvatarCreated = (avatar: Avatar) => {
+    // Add avatar to active campaign
+    if (activeCampaign) {
+      addAvatarToCampaign(activeCampaign.id, avatar.id)
+      // Refresh campaign to get updated avatarIds
+      const updated = getCampaign(activeCampaign.id)
+      if (updated) {
+        setActiveCampaign(updated)
+      }
+    }
     setAvatars(getAvatars())
   }
   
