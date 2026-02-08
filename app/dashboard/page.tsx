@@ -66,7 +66,7 @@ function DashboardContent() {
   }
 
   // Simulate event detection
-  const detectEvent = useCallback(() => {
+  const detectEvent = useCallback((): Event => {
     const events = [
       { type: 'TOUCHDOWN', description: 'Chiefs score touchdown - Mahomes to Kelce', confidence: 0.97 },
       { type: 'FUMBLE', description: 'Eagles fumble on their own 20', confidence: 0.94 },
@@ -75,8 +75,9 @@ function DashboardContent() {
       { type: 'HALFTIME', description: 'Halftime show beginning', confidence: 0.99 },
     ]
     
-    const event = events[Math.floor(Math.random() * events.length)]
-    setCurrentEvent({ ...event, timestamp: new Date() })
+    const baseEvent = events[Math.floor(Math.random() * events.length)]
+    const event: Event = { ...baseEvent, timestamp: new Date() }
+    setCurrentEvent(event)
     return event
   }, [])
 
