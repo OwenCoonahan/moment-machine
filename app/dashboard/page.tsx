@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { 
   Zap, ArrowLeft, Loader2, Upload, Palette, Globe,
   Image as ImageIcon, Video, Send, Clock, Settings,
-  Sparkles, Bomb, ChevronRight, ExternalLink, Users, Plus, TrendingUp
+  Sparkles, Bomb, ChevronRight, ExternalLink, Users, Plus, TrendingUp, Film, Play, Download
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -55,6 +55,17 @@ interface ContentItem {
   platform?: string
   model?: string
   avatarId?: string
+}
+
+interface ClipItem {
+  id: string
+  name: string
+  folder?: string
+  url: string
+  type: 'image' | 'video' | 'file'
+  size: number
+  createdAt: string
+  metadata?: Record<string, any>
 }
 
 interface Brand {
@@ -177,6 +188,15 @@ function DashboardContent() {
   const [customEventIndex, setCustomEventIndex] = useState(0)
   const [isEventPlaying, setIsEventPlaying] = useState(false)
   const [currentEventId, setCurrentEventId] = useState<string | null>(null)
+  
+  // Clips state
+  const [clips, setClips] = useState<ClipItem[]>([])
+  const [clipsLoading, setClipsLoading] = useState(false)
+  const [clipsBucket, setClipsBucket] = useState('videos')
+  const [clipsFolder, setClipsFolder] = useState('')
+  const [availableBuckets, setAvailableBuckets] = useState<string[]>([])
+  const [availableFolders, setAvailableFolders] = useState<string[]>([])
+  const [activeTab, setActiveTab] = useState('studio')
 
   // Load campaigns and avatars
   useEffect(() => {
@@ -423,6 +443,38 @@ function DashboardContent() {
   const refreshCustomEvents = () => {
     setCustomEvents(getCustomEvents())
   }
+  
+  // Fetch clips from Supabase
+  const fetchClips = async () => {
+    setClipsLoading(true)
+    try {
+      const params = new URLSearchParams()
+      if (clipsBucket) params.set('bucket', clipsBucket)
+      if (clipsFolder) params.set('folder', clipsFolder)
+      
+      const res = await fetch(`/api/clips?${params.toString()}`)
+      const data = await res.json()
+      
+      if (data.success) {
+        setClips(data.clips || [])
+        setAvailableBuckets(data.buckets || [])
+        setAvailableFolders(data.folders || [])
+      } else {
+        console.error('Clips fetch error:', data.error)
+        setAvailableBuckets(data.buckets || [])
+      }
+    } catch (error) {
+      console.error('Clips fetch error:', error)
+    }
+    setClipsLoading(false)
+  }
+  
+  // Fetch clips when tab changes to clips
+  useEffect(() => {
+    if (activeTab === 'clips') {
+      fetchClips()
+    }
+  }, [activeTab, clipsBucket, clipsFolder])
 
   // Studio mode - high quality generation
   const generateStudio = async (avatar?: Avatar) => {
@@ -933,7 +985,7 @@ function DashboardContent() {
               </Button>
             </div>
           ) : (
-            <Tabs defaultValue="studio" className="space-y-6">
+            <Tabs defaultValue="studio" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
               <div className="flex items-center justify-between">
                 <TabsList>
                   <TabsTrigger value="studio" className="gap-1.5">
@@ -951,6 +1003,10 @@ function DashboardContent() {
                   <TabsTrigger value="markets" className="gap-1.5">
                     <TrendingUp className="w-3.5 h-3.5" />
                     Markets
+                  </TabsTrigger>
+                  <TabsTrigger value="clips" className="gap-1.5">
+                    <Film className="w-3.5 h-3.5" />
+                    Clips
                   </TabsTrigger>
                 </TabsList>
 
@@ -1329,6 +1385,162 @@ function DashboardContent() {
                     </Card>
                   </div>
                 </div>
+              </TabsContent>
+
+              {/* Clips Tab */}
+              <TabsContent value="clips" className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold">Content Library</h2>
+                    <p className="text-sm text-muted-foreground">Your uploaded clips and generated content from S3</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {availableBuckets.length > 1 && (
+                      <select
+                        value={clipsBucket}
+                        onChange={(e) => {
+                          setClipsBucket(e.target.value)
+                          setClipsFolder('')
+                        }}
+                        className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                      >
+                        {availableBuckets.map(bucket => (
+                          <option key={bucket} value={bucket}>{bucket}</option>
+                        ))}
+                      </select>
+                    )}
+                    {availableFolders.length > 0 && (
+                      <select
+                        value={clipsFolder}
+                        onChange={(e) => setClipsFolder(e.target.value)}
+                        className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                      >
+                        <option value="">All Files</option>
+                        {availableFolders.map(folder => (
+                          <option key={folder} value={folder}>{folder}</option>
+                        ))}
+                      </select>
+                    )}
+                    <Button 
+                      onClick={fetchClips}
+                      disabled={clipsLoading}
+                      variant="outline"
+                      className="gap-2"
+                    >
+                      {clipsLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Zap className="w-4 h-4" />
+                      )}
+                      Refresh
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Clips Grid */}
+                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {clipsLoading ? (
+                    Array(8).fill(null).map((_, i) => (
+                      <div key={i} className="aspect-square bg-muted animate-pulse rounded-lg" />
+                    ))
+                  ) : clips.length === 0 ? (
+                    <div className="col-span-full border border-dashed rounded-lg p-12 flex flex-col items-center justify-center text-muted-foreground">
+                      <Film className="w-10 h-10 mb-3 opacity-30" />
+                      <p className="text-sm">No clips found</p>
+                      <p className="text-xs mt-1">
+                        {availableBuckets.length > 0 
+                          ? `Available buckets: ${availableBuckets.join(', ')}`
+                          : 'Connect your S3 bucket to see content'
+                        }
+                      </p>
+                    </div>
+                  ) : (
+                    clips.map(clip => (
+                      <Card key={clip.id} className="overflow-hidden group">
+                        <div className="aspect-square bg-muted relative">
+                          {clip.type === 'video' ? (
+                            <div className="w-full h-full relative">
+                              <video 
+                                src={clip.url} 
+                                className="w-full h-full object-cover"
+                                muted
+                                loop
+                                onMouseEnter={(e) => e.currentTarget.play()}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.pause()
+                                  e.currentTarget.currentTime = 0
+                                }}
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="w-12 h-12 rounded-full bg-black/50 flex items-center justify-center group-hover:opacity-0 transition-opacity">
+                                  <Play className="w-5 h-5 text-white ml-0.5" />
+                                </div>
+                              </div>
+                            </div>
+                          ) : clip.type === 'image' ? (
+                            <img 
+                              src={clip.url} 
+                              alt={clip.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <ImageIcon className="w-8 h-8 text-muted-foreground/30" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="secondary" 
+                              className="h-8"
+                              onClick={() => window.open(clip.url, '_blank')}
+                            >
+                              <ExternalLink className="w-3.5 h-3.5 mr-1" />
+                              Open
+                            </Button>
+                            <a href={clip.url} download={clip.name}>
+                              <Button size="sm" variant="secondary" className="h-8">
+                                <Download className="w-3.5 h-3.5 mr-1" />
+                                Download
+                              </Button>
+                            </a>
+                          </div>
+                        </div>
+                        <CardContent className="p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-1">
+                              <Badge variant="outline" className="text-xs capitalize">{clip.type}</Badge>
+                              {clip.folder && (
+                                <Badge variant="secondary" className="text-xs">{clip.folder}</Badge>
+                              )}
+                            </div>
+                            <span className="text-xs text-muted-foreground font-mono">
+                              {clip.size > 0 ? `${(clip.size / 1024 / 1024).toFixed(1)}MB` : '—'}
+                            </span>
+                          </div>
+                          <p className="text-sm truncate" title={clip.name}>{clip.name}</p>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
+
+                {/* Clips Stats */}
+                {clips.length > 0 && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm text-muted-foreground">
+                          {clips.length} {clips.length === 1 ? 'clip' : 'clips'} • {clips.filter(c => c.type === 'video').length} videos • {clips.filter(c => c.type === 'image').length} images
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Bucket: <span className="font-mono">{clipsBucket}</span>
+                          {clipsFolder && <> / <span className="font-mono">{clipsFolder}</span></>}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
             </Tabs>
           )}

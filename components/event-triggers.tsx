@@ -286,6 +286,7 @@ Q4 2:30 - FUMBLE - Eagles - Pacheco forces turnover`
                 defaultValue=""
               >
                 <option value="">Select a live game...</option>
+                <option value="sb60-seahawks-patriots">🏈 Super Bowl LX - Seahawks vs Patriots</option>
                 <option value="super-bowl-lix">🏈 Super Bowl LIX - Chiefs vs Eagles</option>
                 <option value="afc-championship">🏈 AFC Championship</option>
                 <option value="nfc-championship">🏈 NFC Championship</option>

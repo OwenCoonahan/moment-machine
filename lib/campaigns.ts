@@ -184,9 +184,10 @@ export function setActiveCampaign(id: string | null): void {
 
 // Demo campaigns for quick start
 export const DEMO_GAMES = [
+  { id: 'sb60-seahawks-patriots', name: 'Super Bowl LX - Seahawks vs Patriots', description: 'Seattle vs New England - Live game' },
   { id: 'sb58-replay', name: 'Super Bowl LVIII Replay', description: 'Chiefs vs 49ers - Full game events' },
-  { id: 'demo', name: 'Super Bowl LX (Demo)', description: 'Simulated game events for testing' },
-  { id: '401547602', name: 'Super Bowl LX (Live)', description: 'Real-time ESPN data' },
+  { id: 'demo', name: 'Super Bowl LIX (Demo)', description: 'Chiefs vs Eagles - Simulated events' },
+  { id: '401547602', name: 'Live ESPN Game', description: 'Real-time ESPN data' },
 ]
 
 // Super Bowl LVIII Real Events (Chiefs 25 - 49ers 22, OT)
@@ -196,6 +197,24 @@ export const GAME_EVENTS: Record<string, Array<{
   team: string
   description: string
 }>> = {
+  'sb60-seahawks-patriots': [
+    { timestamp: 'Q1 12:00', type: 'KICKOFF', team: '', description: 'Super Bowl LX kicks off - Seahawks vs Patriots' },
+    { timestamp: 'Q1 9:22', type: 'FIELD_GOAL', team: 'Patriots', description: 'Folk 42-yard field goal - NE leads 3-0' },
+    { timestamp: 'Q1 4:15', type: 'TOUCHDOWN', team: 'Seahawks', description: 'Walker III 28-yard rushing TD - SEA leads 7-3' },
+    { timestamp: 'Q2 11:33', type: 'INTERCEPTION', team: 'Seahawks', description: 'Maye pass intercepted by Woolen' },
+    { timestamp: 'Q2 8:45', type: 'TOUCHDOWN', team: 'Seahawks', description: 'Geno to Metcalf 35-yard TD - SEA leads 14-3' },
+    { timestamp: 'Q2 3:21', type: 'FUMBLE', team: 'Patriots', description: 'Walker fumbles, recovered by Patriots' },
+    { timestamp: 'Q2 0:08', type: 'FIELD_GOAL', team: 'Patriots', description: 'Folk 51-yard field goal - SEA leads 14-6 at half' },
+    { timestamp: 'HALFTIME', type: 'HALFTIME', team: '', description: 'Kendrick Lamar halftime show performance' },
+    { timestamp: 'Q3 10:44', type: 'TOUCHDOWN', team: 'Patriots', description: 'Maye to Henry 12-yard TD - SEA leads 14-13' },
+    { timestamp: 'Q3 6:02', type: 'BIG_PLAY', team: 'Seahawks', description: 'Geno to Lockett 52-yard catch - inside the 10' },
+    { timestamp: 'Q3 5:33', type: 'TOUCHDOWN', team: 'Seahawks', description: 'Walker III 3-yard TD run - SEA leads 21-13' },
+    { timestamp: 'Q4 12:15', type: 'FIELD_GOAL', team: 'Patriots', description: 'Folk 38-yard field goal - SEA leads 21-16' },
+    { timestamp: 'Q4 7:22', type: 'INTERCEPTION', team: 'Patriots', description: 'Geno picked off by Gonzalez' },
+    { timestamp: 'Q4 5:11', type: 'TOUCHDOWN', team: 'Patriots', description: 'Maye to Boutte 18-yard TD - NE leads 23-21' },
+    { timestamp: 'Q4 2:30', type: 'BIG_PLAY', team: 'Seahawks', description: 'Metcalf 44-yard catch - Seahawks at the 25' },
+    { timestamp: 'Q4 0:22', type: 'TOUCHDOWN', team: 'Seahawks', description: 'Geno to JSN 8-yard TD - SEAHAWKS WIN 28-23!' },
+  ],
   'sb58-replay': [
     { timestamp: 'Q1 11:54', type: 'FIELD_GOAL', team: '49ers', description: 'Jake Moody 55-yard field goal - SF leads 3-0' },
     { timestamp: 'Q1 5:14', type: 'TOUCHDOWN', team: 'Chiefs', description: 'Mahomes to Kelce 22-yard TD pass - KC leads 7-3' },
