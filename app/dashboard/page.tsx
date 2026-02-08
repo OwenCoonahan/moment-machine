@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { 
   Zap, ArrowLeft, Loader2, Upload, Palette, Globe,
   Image as ImageIcon, Video, Send, Clock, Settings,
-  Sparkles, Bomb, ChevronRight, ExternalLink
+  Sparkles, Bomb, ChevronRight, ExternalLink, Users, Plus
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -18,6 +18,17 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 
+// Campaign & Avatar imports
+import { 
+  Campaign, getCampaigns, getActiveCampaign, setActiveCampaign as setActiveStoredCampaign,
+  getActiveCampaignId, incrementCampaignContentCount
+} from '@/lib/campaigns'
+import { Avatar, getAvatars, incrementAvatarContentCount, getAvatarPlaceholder } from '@/lib/avatars'
+import { CampaignList, CampaignCard, AddCampaignCard } from '@/components/campaign-card'
+import { AvatarCard, AddAvatarCard } from '@/components/avatar-card'
+import { CampaignModal } from '@/components/campaign-modal'
+import { AvatarModal } from '@/components/avatar-modal'
+
 interface ContentItem {
   id: string
   type: 'image' | 'video' | 'text'
@@ -26,6 +37,7 @@ interface ContentItem {
   caption?: string
   platform?: string
   model?: string
+  avatarId?: string
 }
 
 interface Brand {
@@ -106,23 +118,72 @@ function DashboardContent() {
   const [latency, setLatency] = useState(0)
   const [gameStatus, setGameStatus] = useState<GameStatus | null>(null)
   const [currentEvent, setCurrentEvent] = useState<GameEvent | null>(null)
+  
+  // Campaign & Avatar state
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [activeCampaign, setActiveCampaign] = useState<Campaign | null>(null)
+  const [avatars, setAvatars] = useState<Avatar[]>([])
+  const [campaignAvatars, setCampaignAvatars] = useState<Avatar[]>([])
+  const [showCampaignModal, setShowCampaignModal] = useState(false)
+  const [showAvatarModal, setShowAvatarModal] = useState(false)
+  const [selectedAvatar, setSelectedAvatar] = useState<Avatar | null>(null)
+  
+  // Sidebar view state
+  const [sidebarView, setSidebarView] = useState<'campaigns' | 'settings'>('campaigns')
+
+  // Load campaigns and avatars
+  useEffect(() => {
+    setCampaigns(getCampaigns())
+    setAvatars(getAvatars())
+    
+    const stored = getActiveCampaign()
+    if (stored) {
+      setActiveCampaign(stored)
+      setBrand({
+        name: stored.brandInfo.name,
+        domain: stored.brandInfo.domain || '',
+        colors: stored.brandInfo.colors,
+        industry: stored.brandInfo.industry,
+        loaded: true
+      })
+    }
+  }, [])
+  
+  // Update campaign avatars when active campaign changes
+  useEffect(() => {
+    if (activeCampaign) {
+      const campaignAvatarList = avatars.filter(a => 
+        activeCampaign.avatarIds.includes(a.id)
+      )
+      setCampaignAvatars(campaignAvatarList)
+    } else {
+      setCampaignAvatars([])
+    }
+  }, [activeCampaign, avatars])
 
   // Load brand from URL param
   useEffect(() => {
     const url = searchParams.get('url')
     if (url) {
       setBusinessUrl(url)
-      setBrand(extractBrandFromUrl(url))
+      const extractedBrand = extractBrandFromUrl(url)
+      setBrand(extractedBrand)
+      
+      // Auto-show campaign modal if we have a brand but no active campaign
+      if (extractedBrand.loaded && !getActiveCampaignId()) {
+        setShowCampaignModal(true)
+      }
     }
   }, [searchParams])
 
   // Poll ESPN when auto-generate is on
   useEffect(() => {
-    if (!autoGenerate) return
+    if (!autoGenerate || !activeCampaign) return
     
     const pollGame = async () => {
       try {
-        const res = await fetch('/api/espn')
+        const endpoint = activeCampaign.gameId === 'demo' ? '/api/espn/demo' : '/api/espn'
+        const res = await fetch(endpoint)
         const data = await res.json()
         
         if (data.activeGames?.length > 0) {
@@ -151,15 +212,63 @@ function DashboardContent() {
     pollGame()
     const interval = setInterval(pollGame, 10000)
     return () => clearInterval(interval)
-  }, [autoGenerate])
+  }, [autoGenerate, activeCampaign])
 
   const handleAddBrand = () => {
     if (!businessUrl) return
-    setBrand(extractBrandFromUrl(businessUrl))
+    const extracted = extractBrandFromUrl(businessUrl)
+    setBrand(extracted)
+    
+    // Open campaign modal with brand pre-filled
+    if (extracted.loaded) {
+      setShowCampaignModal(true)
+    }
+  }
+  
+  const handleSelectCampaign = (campaign: Campaign) => {
+    setActiveCampaign(campaign)
+    setActiveStoredCampaign(campaign.id)
+    setBrand({
+      name: campaign.brandInfo.name,
+      domain: campaign.brandInfo.domain || '',
+      colors: campaign.brandInfo.colors,
+      industry: campaign.brandInfo.industry,
+      loaded: true
+    })
+  }
+  
+  const handleCampaignCreated = (campaign: Campaign) => {
+    setCampaigns(getCampaigns())
+    setAvatars(getAvatars())
+    handleSelectCampaign(campaign)
+  }
+  
+  const handleCampaignDeleted = (id: string) => {
+    setCampaigns(getCampaigns())
+    if (activeCampaign?.id === id) {
+      setActiveCampaign(null)
+      setBrand({ name: '', domain: '', colors: [], industry: '', loaded: false })
+    }
+  }
+  
+  const handleAvatarCreated = (avatar: Avatar) => {
+    setAvatars(getAvatars())
+  }
+  
+  const handleAvatarDeleted = (id: string) => {
+    setAvatars(getAvatars())
+    if (selectedAvatar?.id === id) {
+      setSelectedAvatar(null)
+    }
+  }
+  
+  const handleGenerateForAvatar = (avatar: Avatar) => {
+    setSelectedAvatar(avatar)
+    generateStudio(avatar)
   }
 
   // Studio mode - high quality generation
-  const generateStudio = async () => {
+  const generateStudio = async (avatar?: Avatar) => {
     if (!brand.loaded) return
     
     setIsGenerating(true)
@@ -171,7 +280,15 @@ function DashboardContent() {
       timestamp: new Date()
     }
     
-    const basePrompt = prompt || `Professional marketing content for ${brand.name}, a ${brand.industry.toLowerCase()} brand. Style: modern, clean, premium. Event: ${event.type}`
+    // Build prompt with avatar personality if selected
+    let basePrompt = prompt || `Professional marketing content for ${brand.name}, a ${brand.industry.toLowerCase()} brand. Event: ${event.type}`
+    
+    if (avatar) {
+      basePrompt = `${basePrompt}. Character: ${avatar.name} - ${avatar.personality}. Voice: ${avatar.voiceStyle}.`
+      if (avatar.brandPlacements?.length) {
+        basePrompt += ` Include: ${avatar.brandPlacements.join(', ')}.`
+      }
+    }
     
     try {
       const res = await fetch('/api/generate', {
@@ -196,11 +313,21 @@ function DashboardContent() {
           status: 'ready',
           url: item.url,
           model: selectedModel,
-          caption: `${event.type}! ${brand.name} 🏈`,
-          platform: ['Instagram', 'Twitter', 'TikTok', 'Facebook'][i % 4]
+          caption: `${event.type}! ${brand.name} 🏈${avatar ? ` - ${avatar.name}` : ''}`,
+          platform: ['Instagram', 'Twitter', 'TikTok', 'Facebook'][i % 4],
+          avatarId: avatar?.id
         }))
         
         setContent(prev => [...newItems, ...prev])
+        
+        // Update counts
+        if (activeCampaign) {
+          incrementCampaignContentCount(activeCampaign.id, newItems.length)
+        }
+        if (avatar) {
+          incrementAvatarContentCount(avatar.id)
+          setAvatars(getAvatars()) // Refresh
+        }
       }
     } catch (error) {
       console.error('Generation error:', error)
@@ -252,6 +379,10 @@ function DashboardContent() {
         }))
         
         setContent(prev => [...realItems, ...prev])
+        
+        if (activeCampaign) {
+          incrementCampaignContentCount(activeCampaign.id, realItems.length)
+        }
       }
     } catch (error) {
       console.error('Generation error:', error)
@@ -274,6 +405,10 @@ function DashboardContent() {
       setContent(prev => [...batch, ...prev])
     }
     
+    if (activeCampaign) {
+      incrementCampaignContentCount(activeCampaign.id, additionalCount)
+    }
+    
     setLatency(Math.round((Date.now() - startTime) / 1000))
     setIsGenerating(false)
   }
@@ -293,6 +428,12 @@ function DashboardContent() {
             </div>
             <span className="font-medium text-sm">Moment Machine</span>
           </div>
+          {activeCampaign && (
+            <>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">{activeCampaign.name}</span>
+            </>
+          )}
         </div>
         
         <div className="flex items-center gap-4">
@@ -306,6 +447,7 @@ function DashboardContent() {
               id="auto-generate" 
               checked={autoGenerate} 
               onCheckedChange={setAutoGenerate}
+              disabled={!activeCampaign}
             />
             <Label htmlFor="auto-generate" className="text-sm cursor-pointer">
               {autoGenerate ? (
@@ -321,131 +463,144 @@ function DashboardContent() {
 
       <div className="flex">
         {/* Sidebar */}
-        <aside className="w-80 border-r min-h-[calc(100vh-3.5rem)] p-4 space-y-6">
-          {/* Brand Setup */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              <Globe className="w-3.5 h-3.5" />
-              Brand
+        <aside className="w-80 border-r min-h-[calc(100vh-3.5rem)] p-4 space-y-4 overflow-y-auto">
+          {/* Campaigns Section */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <Globe className="w-3.5 h-3.5" />
+                Campaigns
+              </div>
             </div>
             
-            <div className="space-y-3">
-              <div className="flex gap-2">
-                <Input
-                  value={businessUrl}
-                  onChange={e => setBusinessUrl(e.target.value)}
-                  placeholder="yourbusiness.com"
-                  className="h-9 text-sm"
-                  onKeyDown={e => e.key === 'Enter' && handleAddBrand()}
-                />
-                <Button 
-                  size="sm" 
-                  onClick={handleAddBrand}
-                  className="shrink-0"
-                >
-                  Add
-                </Button>
-              </div>
-              
-              {brand.loaded && (
-                <Card className="bg-muted/30">
-                  <CardContent className="p-3 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-sm">{brand.name}</p>
-                        <p className="text-xs text-muted-foreground">{brand.industry}</p>
-                      </div>
-                      <Badge variant="secondary" className="text-xs">Active</Badge>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Palette className="w-3.5 h-3.5 text-muted-foreground" />
-                      <div className="flex gap-1">
-                        {brand.colors.map((c, i) => (
-                          <div 
-                            key={i} 
-                            className="w-5 h-5 rounded border border-border" 
-                            style={{ backgroundColor: c }} 
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-              
-              <Button variant="outline" size="sm" className="w-full justify-start gap-2">
-                <Upload className="w-3.5 h-3.5" />
-                Upload Logo
-              </Button>
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Model Selection */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5" />
-              Model
-            </div>
-            <div className="space-y-1">
-              {MODELS.map(model => (
-                <button
-                  key={model.id}
-                  onClick={() => setSelectedModel(model.id)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
-                    selectedModel === model.id
-                      ? 'bg-foreground text-background'
-                      : 'hover:bg-muted'
-                  }`}
-                >
-                  <span>{model.name}</span>
-                  <span className={`text-xs ${selectedModel === model.id ? 'text-background/70' : 'text-muted-foreground'}`}>
-                    {model.type} • {model.speed}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Aspect Ratio */}
-          <div className="space-y-3">
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Aspect Ratio
-            </div>
-            <div className="flex gap-2">
-              {ASPECT_RATIOS.map(ar => (
-                <button
-                  key={ar.id}
-                  onClick={() => setAspectRatio(ar.id)}
-                  className={`flex-1 py-2 text-xs rounded-md border transition-colors ${
-                    aspectRatio === ar.id
-                      ? 'border-foreground bg-foreground text-background'
-                      : 'border-border hover:border-foreground/30'
-                  }`}
-                >
-                  {ar.ratio}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Prompt */}
-          <div className="space-y-3">
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Custom Prompt
-            </div>
-            <textarea
-              value={prompt}
-              onChange={e => setPrompt(e.target.value)}
-              placeholder="Describe the content you want, or leave blank for auto-generated prompts..."
-              className="w-full text-sm border border-input rounded-md px-3 py-2 h-20 resize-none focus:outline-none focus:ring-1 focus:ring-ring bg-background"
+            <CampaignList
+              campaigns={campaigns}
+              activeCampaignId={activeCampaign?.id || null}
+              onSelect={handleSelectCampaign}
+              onDelete={handleCampaignDeleted}
+              onAddNew={() => setShowCampaignModal(true)}
             />
           </div>
+          
+          <Separator />
+          
+          {/* Avatars Section (only show if campaign selected) */}
+          {activeCampaign && (
+            <>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    <Users className="w-3.5 h-3.5" />
+                    Avatars
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 px-2 text-xs"
+                    onClick={() => setShowAvatarModal(true)}
+                  >
+                    <Plus className="w-3 h-3 mr-1" />
+                    Add
+                  </Button>
+                </div>
+                
+                {campaignAvatars.length === 0 ? (
+                  <Card 
+                    className="border-2 border-dashed border-border hover:border-primary transition-colors cursor-pointer"
+                    onClick={() => setShowAvatarModal(true)}
+                  >
+                    <CardContent className="flex flex-col items-center justify-center py-6 text-muted-foreground hover:text-foreground transition-colors">
+                      <Plus className="h-5 w-5 mb-1" />
+                      <span className="text-xs">Add Avatar</span>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-2">
+                    {campaignAvatars.map(avatar => (
+                      <AvatarCard
+                        key={avatar.id}
+                        avatar={avatar}
+                        compact
+                        onGenerate={handleGenerateForAvatar}
+                        onDelete={handleAvatarDeleted}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              <Separator />
+            </>
+          )}
+
+          {/* Model Selection - Only show if campaign active */}
+          {activeCampaign && (
+            <>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Model
+                </div>
+                <div className="space-y-1">
+                  {MODELS.map(model => (
+                    <button
+                      key={model.id}
+                      onClick={() => setSelectedModel(model.id)}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
+                        selectedModel === model.id
+                          ? 'bg-foreground text-background'
+                          : 'hover:bg-muted'
+                      }`}
+                    >
+                      <span>{model.name}</span>
+                      <span className={`text-xs ${selectedModel === model.id ? 'text-background/70' : 'text-muted-foreground'}`}>
+                        {model.type} • {model.speed}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Aspect Ratio */}
+              <div className="space-y-3">
+                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Aspect Ratio
+                </div>
+                <div className="flex gap-2">
+                  {ASPECT_RATIOS.map(ar => (
+                    <button
+                      key={ar.id}
+                      onClick={() => setAspectRatio(ar.id)}
+                      className={`flex-1 py-2 text-xs rounded-md border transition-colors ${
+                        aspectRatio === ar.id
+                          ? 'border-foreground bg-foreground text-background'
+                          : 'border-border hover:border-foreground/30'
+                      }`}
+                    >
+                      {ar.ratio}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Prompt */}
+              <div className="space-y-3">
+                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Custom Prompt
+                </div>
+                <textarea
+                  value={prompt}
+                  onChange={e => setPrompt(e.target.value)}
+                  placeholder="Describe the content you want, or leave blank for auto-generated prompts..."
+                  className="w-full text-sm border border-input rounded-md px-3 py-2 h-20 resize-none focus:outline-none focus:ring-1 focus:ring-ring bg-background"
+                />
+              </div>
+            </>
+          )}
 
           {/* Event indicator */}
           {currentEvent && (
@@ -475,195 +630,263 @@ function DashboardContent() {
 
         {/* Main Content */}
         <main className="flex-1 p-6">
-          <Tabs defaultValue="studio" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <TabsList>
-                <TabsTrigger value="studio" className="gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Studio
-                </TabsTrigger>
-                <TabsTrigger value="nuke" className="gap-1.5">
-                  <Bomb className="w-3.5 h-3.5" />
-                  Nuke
-                </TabsTrigger>
-              </TabsList>
-
-              {/* Stats */}
-              <div className="flex gap-4">
-                {[
-                  { label: 'Generated', value: content.length },
-                  { label: 'Latency', value: `${latency}s` },
-                  { label: 'Queued', value: content.filter(c => c.status === 'scheduled').length },
-                ].map(stat => (
-                  <div key={stat.label} className="text-right">
-                    <div className="text-2xl font-semibold font-mono">{stat.value}</div>
-                    <div className="text-xs text-muted-foreground">{stat.label}</div>
-                  </div>
-                ))}
+          {!activeCampaign ? (
+            // No campaign selected state
+            <div className="h-full flex flex-col items-center justify-center text-center py-20">
+              <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+                <Zap className="w-8 h-8 text-muted-foreground" />
               </div>
+              <h2 className="text-xl font-semibold mb-2">No Campaign Selected</h2>
+              <p className="text-muted-foreground mb-6 max-w-sm">
+                Create a campaign to start generating content for your brand.
+              </p>
+              <Button onClick={() => setShowCampaignModal(true)}>
+                <Plus className="w-4 h-4 mr-1.5" />
+                Create Campaign
+              </Button>
             </div>
-
-            {/* Studio Tab */}
-            <TabsContent value="studio" className="space-y-4">
+          ) : (
+            <Tabs defaultValue="studio" className="space-y-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold">High-Quality Generation</h2>
-                  <p className="text-sm text-muted-foreground">Create polished, brand-aligned content</p>
+                <TabsList>
+                  <TabsTrigger value="studio" className="gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Studio
+                  </TabsTrigger>
+                  <TabsTrigger value="nuke" className="gap-1.5">
+                    <Bomb className="w-3.5 h-3.5" />
+                    Nuke
+                  </TabsTrigger>
+                  <TabsTrigger value="avatars" className="gap-1.5">
+                    <Users className="w-3.5 h-3.5" />
+                    Avatars
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* Stats */}
+                <div className="flex gap-4">
+                  {[
+                    { label: 'Generated', value: content.length },
+                    { label: 'Latency', value: `${latency}s` },
+                    { label: 'Queued', value: content.filter(c => c.status === 'scheduled').length },
+                  ].map(stat => (
+                    <div key={stat.label} className="text-right">
+                      <div className="text-2xl font-semibold font-mono">{stat.value}</div>
+                      <div className="text-xs text-muted-foreground">{stat.label}</div>
+                    </div>
+                  ))}
                 </div>
-                <Button 
-                  onClick={generateStudio}
-                  disabled={!brand.loaded || isGenerating}
-                  className="gap-2"
-                >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="w-4 h-4" />
-                      Generate
-                    </>
-                  )}
-                </Button>
               </div>
 
-              {/* Content Grid - Studio */}
-              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {content.filter(item => item.url).length === 0 ? (
-                  <div className="col-span-full border border-dashed rounded-lg p-12 flex flex-col items-center justify-center text-muted-foreground">
-                    <ImageIcon className="w-10 h-10 mb-3 opacity-30" />
-                    <p className="text-sm">No content yet</p>
-                    <p className="text-xs">Click Generate to create content</p>
+              {/* Studio Tab */}
+              <TabsContent value="studio" className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold">High-Quality Generation</h2>
+                    <p className="text-sm text-muted-foreground">Create polished, brand-aligned content</p>
                   </div>
-                ) : (
-                  content.filter(item => item.url).slice(0, 12).map(item => (
-                    <Card key={item.id} className="overflow-hidden group">
-                      <div className="aspect-square bg-muted relative">
-                        {item.url ? (
-                          <img 
-                            src={item.url} 
-                            alt="" 
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            {item.type === 'video' ? (
-                              <Video className="w-8 h-8 text-muted-foreground/30" />
-                            ) : (
-                              <ImageIcon className="w-8 h-8 text-muted-foreground/30" />
-                            )}
-                          </div>
-                        )}
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                          <Button size="sm" variant="secondary" className="h-8">
-                            <Clock className="w-3.5 h-3.5 mr-1" />
-                            Schedule
-                          </Button>
-                          <Button size="sm" variant="secondary" className="h-8">
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                      <CardContent className="p-3">
-                        <div className="flex items-center justify-between mb-1">
-                          <Badge variant="outline" className="text-xs">{item.platform}</Badge>
-                          <span className="text-xs text-muted-foreground capitalize">{item.model?.replace('-', ' ')}</span>
-                        </div>
-                        <p className="text-sm truncate">{item.caption}</p>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </div>
-            </TabsContent>
-
-            {/* Nuke Tab */}
-            <TabsContent value="nuke" className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold">Mass Generation</h2>
-                  <p className="text-sm text-muted-foreground">Generate hundreds of content pieces instantly</p>
+                  <Button 
+                    onClick={() => generateStudio(selectedAvatar || undefined)}
+                    disabled={!brand.loaded || isGenerating}
+                    className="gap-2"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-4 h-4" />
+                        Generate
+                      </>
+                    )}
+                  </Button>
                 </div>
-                <Button 
-                  onClick={triggerNuke}
-                  disabled={!brand.loaded || isGenerating}
-                  variant="destructive"
-                  className="gap-2"
-                >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Launching...
-                    </>
-                  ) : (
-                    <>
-                      <Bomb className="w-4 h-4" />
-                      Launch Nuke
-                    </>
-                  )}
-                </Button>
-              </div>
 
-              {/* Nuke Grid */}
-              <Card>
-                <CardContent className="p-4">
-                  {content.length === 0 ? (
-                    <div className="h-64 flex flex-col items-center justify-center text-muted-foreground">
-                      <Bomb className="w-10 h-10 mb-3 opacity-30" />
-                      <p className="text-sm">Ready to launch</p>
-                      <p className="text-xs">Generate 100+ pieces in seconds</p>
+                {/* Content Grid - Studio */}
+                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {content.filter(item => item.url).length === 0 ? (
+                    <div className="col-span-full border border-dashed rounded-lg p-12 flex flex-col items-center justify-center text-muted-foreground">
+                      <ImageIcon className="w-10 h-10 mb-3 opacity-30" />
+                      <p className="text-sm">No content yet</p>
+                      <p className="text-xs">Click Generate to create content</p>
                     </div>
                   ) : (
-                    <>
-                      <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 lg:grid-cols-16 gap-1 max-h-80 overflow-y-auto">
-                        {content.slice(0, 160).map((item) => (
-                          <div
-                            key={item.id}
-                            className="aspect-square rounded bg-muted overflow-hidden"
-                          >
-                            {item.url ? (
-                              <img 
-                                src={item.url} 
-                                alt="" 
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                {item.type === 'video' ? (
-                                  <Video className="w-2.5 h-2.5 text-blue-400" />
-                                ) : (
-                                  <ImageIcon className="w-2.5 h-2.5 text-muted-foreground" />
-                                )}
-                              </div>
-                            )}
+                    content.filter(item => item.url).slice(0, 12).map(item => (
+                      <Card key={item.id} className="overflow-hidden group">
+                        <div className="aspect-square bg-muted relative">
+                          {item.url ? (
+                            <img 
+                              src={item.url} 
+                              alt="" 
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              {item.type === 'video' ? (
+                                <Video className="w-8 h-8 text-muted-foreground/30" />
+                              ) : (
+                                <ImageIcon className="w-8 h-8 text-muted-foreground/30" />
+                              )}
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <Button size="sm" variant="secondary" className="h-8">
+                              <Clock className="w-3.5 h-3.5 mr-1" />
+                              Schedule
+                            </Button>
+                            <Button size="sm" variant="secondary" className="h-8">
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </Button>
                           </div>
-                        ))}
-                        {content.length > 160 && (
-                          <div className="aspect-square rounded bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground">
-                            +{content.length - 160}
-                          </div>
-                        )}
-                      </div>
-                      <Separator className="my-4" />
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm text-muted-foreground">
-                          {content.length} pieces generated
                         </div>
-                        <Button className="gap-2">
-                          <Send className="w-4 h-4" />
-                          Deploy All
-                        </Button>
-                      </div>
-                    </>
+                        <CardContent className="p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <Badge variant="outline" className="text-xs">{item.platform}</Badge>
+                            <span className="text-xs text-muted-foreground capitalize">{item.model?.replace('-', ' ')}</span>
+                          </div>
+                          <p className="text-sm truncate">{item.caption}</p>
+                        </CardContent>
+                      </Card>
+                    ))
                   )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+                </div>
+              </TabsContent>
+
+              {/* Nuke Tab */}
+              <TabsContent value="nuke" className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold">Mass Generation</h2>
+                    <p className="text-sm text-muted-foreground">Generate hundreds of content pieces instantly</p>
+                  </div>
+                  <Button 
+                    onClick={triggerNuke}
+                    disabled={!brand.loaded || isGenerating}
+                    variant="destructive"
+                    className="gap-2"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Launching...
+                      </>
+                    ) : (
+                      <>
+                        <Bomb className="w-4 h-4" />
+                        Launch Nuke
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Nuke Grid */}
+                <Card>
+                  <CardContent className="p-4">
+                    {content.length === 0 ? (
+                      <div className="h-64 flex flex-col items-center justify-center text-muted-foreground">
+                        <Bomb className="w-10 h-10 mb-3 opacity-30" />
+                        <p className="text-sm">Ready to launch</p>
+                        <p className="text-xs">Generate 100+ pieces in seconds</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 lg:grid-cols-16 gap-1 max-h-80 overflow-y-auto">
+                          {content.slice(0, 160).map((item) => (
+                            <div
+                              key={item.id}
+                              className="aspect-square rounded bg-muted overflow-hidden"
+                            >
+                              {item.url ? (
+                                <img 
+                                  src={item.url} 
+                                  alt="" 
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  {item.type === 'video' ? (
+                                    <Video className="w-2.5 h-2.5 text-blue-400" />
+                                  ) : (
+                                    <ImageIcon className="w-2.5 h-2.5 text-muted-foreground" />
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                          {content.length > 160 && (
+                            <div className="aspect-square rounded bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground">
+                              +{content.length - 160}
+                            </div>
+                          )}
+                        </div>
+                        <Separator className="my-4" />
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm text-muted-foreground">
+                            {content.length} pieces generated
+                          </div>
+                          <Button className="gap-2">
+                            <Send className="w-4 h-4" />
+                            Deploy All
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              {/* Avatars Tab */}
+              <TabsContent value="avatars" className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold">AI Avatars</h2>
+                    <p className="text-sm text-muted-foreground">Manage your AI characters for content generation</p>
+                  </div>
+                  <Button onClick={() => setShowAvatarModal(true)} className="gap-2">
+                    <Plus className="w-4 h-4" />
+                    Add Avatar
+                  </Button>
+                </div>
+                
+                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  <AddAvatarCard onClick={() => setShowAvatarModal(true)} />
+                  
+                  {campaignAvatars.map(avatar => (
+                    <AvatarCard
+                      key={avatar.id}
+                      avatar={avatar}
+                      onGenerate={handleGenerateForAvatar}
+                      onDelete={handleAvatarDeleted}
+                    />
+                  ))}
+                </div>
+              </TabsContent>
+            </Tabs>
+          )}
         </main>
       </div>
+      
+      {/* Modals */}
+      <CampaignModal
+        isOpen={showCampaignModal}
+        onClose={() => setShowCampaignModal(false)}
+        onCreated={handleCampaignCreated}
+        initialBrand={brand.loaded ? {
+          name: brand.name,
+          domain: brand.domain,
+          colors: brand.colors,
+          industry: brand.industry
+        } : undefined}
+      />
+      
+      <AvatarModal
+        isOpen={showAvatarModal}
+        onClose={() => setShowAvatarModal(false)}
+        onCreated={handleAvatarCreated}
+        brandName={brand.name}
+      />
     </div>
   )
 }
