@@ -62,84 +62,34 @@ export interface Market {
 
 export const BOTS: BotProfile[] = [
   {
-    id: 'chipotle',
-    name: 'Chipotle Bot',
-    brand: 'Chipotle',
-    color: '#A81612',
-    avatar: '🌯',
+    id: 'pizzashack',
+    name: 'PizzaShack Bot',
+    brand: 'PizzaShack',
+    color: '#E31837',
+    avatar: '🍕',
     personality: 'aggressive',
-    tagline: 'Extra guac, extra gains',
-    riskTolerance: 0.85,
-  },
-  {
-    id: 'mcdonalds',
-    name: "McD's Bot",
-    brand: "McDonald's",
-    color: '#FFC72C',
-    avatar: '🍟',
-    personality: 'conservative',
-    tagline: "I'm lovin' these odds",
-    riskTolerance: 0.4,
-  },
-  {
-    id: 'nike',
-    name: 'Nike Bot',
-    brand: 'Nike',
-    color: '#111111',
-    avatar: '✓',
-    personality: 'momentum',
-    tagline: 'Just bet it',
-    riskTolerance: 0.7,
-  },
-  {
-    id: 'cocacola',
-    name: 'Coke Bot',
-    brand: 'Coca-Cola',
-    color: '#F40009',
-    avatar: '🥤',
-    personality: 'conservative',
-    tagline: 'Open happiness, close trades',
-    riskTolerance: 0.35,
-  },
-  {
-    id: 'doritos',
-    name: 'Doritos Bot',
-    brand: 'Doritos',
-    color: '#E85C0D',
-    avatar: '🔺',
-    personality: 'aggressive',
-    tagline: 'For the bold bettors',
-    riskTolerance: 0.9,
-  },
-  {
-    id: 'budlight',
-    name: 'Bud Light Bot',
-    brand: 'Bud Light',
-    color: '#004B8D',
-    avatar: '🍺',
-    personality: 'contrarian',
-    tagline: 'Easy to drink, hard to predict',
-    riskTolerance: 0.6,
-  },
-  {
-    id: 'pepsi',
-    name: 'Pepsi Bot',
-    brand: 'Pepsi',
-    color: '#004B93',
-    avatar: '🔵',
-    personality: 'contrarian',
-    tagline: 'The choice of a new generation',
-    riskTolerance: 0.55,
-  },
-  {
-    id: 'taco-bell',
-    name: 'Taco Bell Bot',
-    brand: 'Taco Bell',
-    color: '#702082',
-    avatar: '🌮',
-    personality: 'aggressive',
-    tagline: 'Live Más, bet más',
+    tagline: 'Hot takes, fresh from the oven',
     riskTolerance: 0.8,
+  },
+  {
+    id: 'pizzashack-conservative',
+    name: 'PizzaShack Value',
+    brand: 'PizzaShack',
+    color: '#006B3F',
+    avatar: '🍕',
+    personality: 'conservative',
+    tagline: 'Calculated slices only',
+    riskTolerance: 0.3,
+  },
+  {
+    id: 'pizzashack-contrarian',
+    name: 'PizzaShack Contrarian',
+    brand: 'PizzaShack',
+    color: '#FFB612',
+    avatar: '🍕',
+    personality: 'contrarian',
+    tagline: 'When everyone zigs, we zag',
+    riskTolerance: 0.6,
   },
 ]
 
@@ -147,17 +97,35 @@ export const BOTS: BotProfile[] = [
 // Markets (Simulated)
 // ==========================================
 
+// Real Super Bowl LIX Markets (Chiefs vs Eagles)
 export const MARKETS: Market[] = [
-  { id: 'chiefs-win', name: 'Chiefs to Win', shortName: 'KC Win', currentPrice: 0.52, volume: 1250000, category: 'game' },
-  { id: 'eagles-win', name: 'Eagles to Win', shortName: 'PHI Win', currentPrice: 0.48, volume: 1180000, category: 'game' },
-  { id: 'over-48', name: 'Over 48.5 Points', shortName: 'Over 48.5', currentPrice: 0.51, volume: 450000, category: 'game' },
-  { id: 'under-48', name: 'Under 48.5 Points', shortName: 'Under 48.5', currentPrice: 0.49, volume: 420000, category: 'game' },
-  { id: 'mahomes-3td', name: 'Mahomes 3+ TDs', shortName: 'Mahomes 3+', currentPrice: 0.42, volume: 320000, category: 'player' },
-  { id: 'hurts-rush-td', name: 'Hurts Rushing TD', shortName: 'Hurts Rush', currentPrice: 0.55, volume: 280000, category: 'player' },
-  { id: 'kelce-100', name: 'Kelce 100+ Yards', shortName: 'Kelce 100+', currentPrice: 0.38, volume: 190000, category: 'player' },
-  { id: 'first-td-wr', name: 'First TD by WR', shortName: 'WR 1st TD', currentPrice: 0.35, volume: 150000, category: 'prop' },
-  { id: 'safety', name: 'Safety Scored', shortName: 'Safety', currentPrice: 0.08, volume: 85000, category: 'prop' },
-  { id: 'ot', name: 'Game Goes to OT', shortName: 'Overtime', currentPrice: 0.07, volume: 95000, category: 'prop' },
+  // Game Outcome
+  { id: 'chiefs-win', name: 'Chiefs to Win Super Bowl LIX', shortName: 'KC Win', currentPrice: 0.52, volume: 12500000, category: 'game' },
+  { id: 'eagles-win', name: 'Eagles to Win Super Bowl LIX', shortName: 'PHI Win', currentPrice: 0.48, volume: 11800000, category: 'game' },
+  
+  // Totals
+  { id: 'over-49', name: 'Over 49.5 Total Points', shortName: 'Over 49.5', currentPrice: 0.51, volume: 4500000, category: 'game' },
+  { id: 'under-49', name: 'Under 49.5 Total Points', shortName: 'Under 49.5', currentPrice: 0.49, volume: 4200000, category: 'game' },
+  
+  // MVP
+  { id: 'mahomes-mvp', name: 'Patrick Mahomes Super Bowl MVP', shortName: 'Mahomes MVP', currentPrice: 0.35, volume: 2800000, category: 'player' },
+  { id: 'hurts-mvp', name: 'Jalen Hurts Super Bowl MVP', shortName: 'Hurts MVP', currentPrice: 0.28, volume: 2400000, category: 'player' },
+  { id: 'kelce-mvp', name: 'Travis Kelce Super Bowl MVP', shortName: 'Kelce MVP', currentPrice: 0.12, volume: 1900000, category: 'player' },
+  
+  // Player Props
+  { id: 'mahomes-3td', name: 'Mahomes 3+ Passing TDs', shortName: 'Mahomes 3+ TD', currentPrice: 0.42, volume: 3200000, category: 'player' },
+  { id: 'hurts-rush-td', name: 'Jalen Hurts Rushing TD', shortName: 'Hurts Rush TD', currentPrice: 0.58, volume: 2800000, category: 'player' },
+  { id: 'kelce-100', name: 'Travis Kelce 100+ Receiving Yards', shortName: 'Kelce 100+', currentPrice: 0.38, volume: 1900000, category: 'player' },
+  { id: 'aj-brown-td', name: 'A.J. Brown Receiving TD', shortName: 'AJ Brown TD', currentPrice: 0.62, volume: 1500000, category: 'player' },
+  
+  // Game Props
+  { id: 'first-score-td', name: 'First Score is Touchdown', shortName: '1st Score TD', currentPrice: 0.68, volume: 950000, category: 'prop' },
+  { id: 'safety', name: 'Safety Scored in Game', shortName: 'Safety', currentPrice: 0.08, volume: 850000, category: 'prop' },
+  { id: 'ot', name: 'Game Goes to Overtime', shortName: 'Overtime', currentPrice: 0.07, volume: 950000, category: 'prop' },
+  { id: 'lead-change-3', name: '3+ Lead Changes', shortName: '3+ Lead Changes', currentPrice: 0.72, volume: 650000, category: 'prop' },
+  
+  // Halftime Show
+  { id: 'kendrick-surprise', name: 'Surprise Guest at Halftime', shortName: 'Halftime Guest', currentPrice: 0.82, volume: 1200000, category: 'prop' },
 ]
 
 // ==========================================

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Plus, Trash2, Sparkles } from 'lucide-react'
+import { X, Plus, Trash2, Sparkles, Globe, Upload, Loader2 } from 'lucide-react'
 import { saveCampaign, DEMO_GAMES, CampaignInput } from '@/lib/campaigns'
 import { Avatar, getAvatars, AVATAR_TEMPLATES, saveAvatar, getAvatarPlaceholder } from '@/lib/avatars'
 import { Button } from '@/components/ui/button'
@@ -29,10 +29,55 @@ export function CampaignModal({ isOpen, onClose, onCreated, initialBrand }: Camp
   // Form state
   const [name, setName] = useState('')
   const [gameId, setGameId] = useState('demo')
+  const [brandUrl, setBrandUrl] = useState('')
   const [brandName, setBrandName] = useState('')
   const [brandIndustry, setBrandIndustry] = useState('')
   const [brandColors, setBrandColors] = useState(['#18181b', '#f4f4f5', '#ffffff'])
+  const [brandLogo, setBrandLogo] = useState<string | null>(null)
+  const [isLoadingBrand, setIsLoadingBrand] = useState(false)
   const [selectedAvatarIds, setSelectedAvatarIds] = useState<string[]>([])
+  
+  // Auto-extract brand from URL
+  const extractBrandFromUrl = async (url: string) => {
+    if (!url) return
+    setIsLoadingBrand(true)
+    
+    try {
+      const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`)
+      const domain = urlObj.hostname.replace('www.', '')
+      const brandNameFromUrl = domain.split('.')[0]
+      
+      // Known restaurant brands with colors
+      const knownBrands: Record<string, { name: string; colors: string[]; industry: string }> = {
+        'chipotle': { name: 'Chipotle', colors: ['#441500', '#A81612', '#F5F0EB'], industry: 'Restaurant' },
+        'dominos': { name: "Domino's", colors: ['#006491', '#E31837', '#FFFFFF'], industry: 'Restaurant' },
+        'wingstop': { name: 'Wingstop', colors: ['#024731', '#FFD100', '#FFFFFF'], industry: 'Restaurant' },
+        'pizzahut': { name: 'Pizza Hut', colors: ['#E31837', '#00A160', '#FFFFFF'], industry: 'Restaurant' },
+        'papajohns': { name: "Papa John's", colors: ['#006B3F', '#E31837', '#FFFFFF'], industry: 'Restaurant' },
+        'buffalowildwings': { name: 'Buffalo Wild Wings', colors: ['#FFB612', '#000000', '#FFFFFF'], industry: 'Restaurant' },
+        'tacobell': { name: 'Taco Bell', colors: ['#702082', '#FF5A00', '#FFFFFF'], industry: 'Restaurant' },
+        'wendys': { name: "Wendy's", colors: ['#E2203D', '#199FDA', '#FFFFFF'], industry: 'Restaurant' },
+        'mcdonalds': { name: "McDonald's", colors: ['#FFC72C', '#DA291C', '#27251F'], industry: 'Restaurant' },
+      }
+      
+      const known = knownBrands[brandNameFromUrl.toLowerCase()]
+      if (known) {
+        setBrandName(known.name)
+        setBrandIndustry(known.industry)
+        setBrandColors(known.colors)
+        setName(`${known.name} - Super Bowl`)
+      } else {
+        const prettyName = brandNameFromUrl.charAt(0).toUpperCase() + brandNameFromUrl.slice(1)
+        setBrandName(prettyName)
+        setBrandIndustry('Restaurant')
+        setName(`${prettyName} - Super Bowl`)
+      }
+    } catch (e) {
+      console.error('Error extracting brand:', e)
+    }
+    
+    setIsLoadingBrand(false)
+  }
   
   // Existing avatars
   const [existingAvatars, setExistingAvatars] = useState<Avatar[]>([])
@@ -164,6 +209,33 @@ export function CampaignModal({ isOpen, onClose, onCreated, initialBrand }: Camp
               <div className="space-y-4">
                 <Label className="text-xs uppercase tracking-wider text-muted-foreground">Brand Info</Label>
                 
+                {/* URL Auto-Extract */}
+                <div className="space-y-2">
+                  <Label htmlFor="brand-url">Website URL (auto-extracts brand)</Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="brand-url"
+                        value={brandUrl}
+                        onChange={e => setBrandUrl(e.target.value)}
+                        onBlur={() => extractBrandFromUrl(brandUrl)}
+                        placeholder="joespizza.com"
+                        className="bg-white pl-9"
+                      />
+                    </div>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => extractBrandFromUrl(brandUrl)}
+                      disabled={isLoadingBrand || !brandUrl}
+                    >
+                      {isLoadingBrand ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Extract'}
+                    </Button>
+                  </div>
+                </div>
+                
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label htmlFor="brand-name">Brand Name</Label>
@@ -171,7 +243,7 @@ export function CampaignModal({ isOpen, onClose, onCreated, initialBrand }: Camp
                       id="brand-name"
                       value={brandName}
                       onChange={e => setBrandName(e.target.value)}
-                      placeholder="Chipotle"
+                      placeholder="Joe's Pizza"
                       className="bg-white"
                     />
                   </div>
@@ -205,6 +277,47 @@ export function CampaignModal({ isOpen, onClose, onCreated, initialBrand }: Camp
                         />
                       </div>
                     ))}
+                  </div>
+                </div>
+                
+                {/* Logo Upload */}
+                <div className="space-y-2">
+                  <Label>Logo (optional)</Label>
+                  <div className="flex items-center gap-3">
+                    {brandLogo ? (
+                      <div className="w-16 h-16 rounded border border-border overflow-hidden bg-muted">
+                        <img src={brandLogo} alt="Logo" className="w-full h-full object-contain" />
+                      </div>
+                    ) : (
+                      <div className="w-16 h-16 rounded border-2 border-dashed border-border flex items-center justify-center bg-muted/50">
+                        <Upload className="w-5 h-5 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={e => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            const reader = new FileReader()
+                            reader.onload = (ev) => {
+                              setBrandLogo(ev.target?.result as string)
+                            }
+                            reader.readAsDataURL(file)
+                          }
+                        }}
+                        className="hidden"
+                        id="logo-upload"
+                      />
+                      <label 
+                        htmlFor="logo-upload"
+                        className="inline-flex items-center gap-2 px-3 py-2 text-sm border rounded-md cursor-pointer hover:bg-muted transition-colors"
+                      >
+                        <Upload className="w-4 h-4" />
+                        {brandLogo ? 'Change Logo' : 'Upload Logo'}
+                      </label>
+                    </div>
                   </div>
                 </div>
               </div>
