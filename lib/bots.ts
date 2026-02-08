@@ -1,5 +1,5 @@
 /**
- * Prediction Market Bot System for Moment Machine
+ * Prediction Market Bot System for Blitz
  * Simulates brand bots making trades based on live game events
  */
 

@@ -1,5 +1,5 @@
 /**
- * Event Triggers - Custom event input for Moment Machine
+ * Event Triggers - Custom event input for Blitz
  * Allows paste-in events or ESPN API integration
  */
 

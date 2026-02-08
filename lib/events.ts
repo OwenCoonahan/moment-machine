@@ -1,5 +1,5 @@
 /**
- * Event Types and Detection Logic for Moment Machine
+ * Event Types and Detection Logic for Blitz
  */
 
 // Event types that trigger content generation

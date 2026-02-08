@@ -13,10 +13,8 @@ export default function LandingPage() {
       <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-sm border-b border-zinc-100">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-zinc-900 rounded-md flex items-center justify-center">
-              <Zap className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-semibold text-zinc-900">Moment Machine</span>
+            <span className="text-2xl">🏈</span>
+            <span className="font-semibold text-zinc-900">Blitz</span>
           </div>
           <Link 
             href="/dashboard" 
@@ -144,7 +142,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-zinc-100 py-6 px-6">
         <div className="max-w-5xl mx-auto flex items-center justify-between text-sm text-zinc-400">
-          <span>Moment Machine</span>
+          <span>🏈 Blitz</span>
           <span>Built at Pulse NYC Hackathon</span>
         </div>
       </footer>

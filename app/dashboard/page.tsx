@@ -695,10 +695,8 @@ function DashboardContent() {
           </Link>
           <Separator orientation="vertical" className="h-6" />
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-foreground rounded flex items-center justify-center">
-              <Zap className="w-3.5 h-3.5 text-background" />
-            </div>
-            <span className="font-medium text-sm">Moment Machine</span>
+            <span className="text-xl">🏈</span>
+            <span className="font-medium text-sm">Blitz</span>
           </div>
           {activeCampaign && (
             <>
