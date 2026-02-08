@@ -26,17 +26,17 @@ export async function POST(request: Request) {
         { status: 400 }
       )
     }
+
     const results = []
     for (const recipient of to) {
-      const twimlUrl = `https://twimlets.com/message?Message=${encodeURIComponent(message)}`
       const body = new URLSearchParams({
         From: TWILIO_FROM_NUMBER as string,
         To: recipient,
-        Url: twimlUrl,
+        Body: message,
       })
 
       const response = await fetch(
-        `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls.json`,
+        `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`,
         {
           method: 'POST',
           headers: {
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
       results,
     })
   } catch (error) {
-    console.error('Twilio send error:', error)
-    return NextResponse.json({ error: 'Send failed' }, { status: 500 })
+    console.error('Twilio SMS error:', error)
+    return NextResponse.json({ error: 'SMS failed' }, { status: 500 })
   }
 }
