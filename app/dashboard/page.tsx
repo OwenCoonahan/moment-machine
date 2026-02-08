@@ -1399,8 +1399,8 @@ function DashboardContent() {
               <TabsContent value="clips" className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-semibold">Content Library</h2>
-                    <p className="text-sm text-muted-foreground">Your uploaded clips and generated content from S3</p>
+                    <h2 className="text-lg font-semibold">Clips</h2>
+                    <p className="text-sm text-muted-foreground">Auto-clipped footage ready for your content team</p>
                   </div>
                   <div className="flex items-center gap-2">
                     {availableBuckets.length > 1 && (
