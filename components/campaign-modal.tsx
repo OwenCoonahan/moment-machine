@@ -37,43 +37,51 @@ export function CampaignModal({ isOpen, onClose, onCreated, initialBrand }: Camp
   const [isLoadingBrand, setIsLoadingBrand] = useState(false)
   const [selectedAvatarIds, setSelectedAvatarIds] = useState<string[]>([])
   
-  // Auto-extract brand from URL
+  // Auto-extract brand from URL via API
   const extractBrandFromUrl = async (url: string) => {
     if (!url) return
     setIsLoadingBrand(true)
     
     try {
-      const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`)
-      const domain = urlObj.hostname.replace('www.', '')
-      const brandNameFromUrl = domain.split('.')[0]
+      // Call our brand extraction API
+      const res = await fetch('/api/extract-brand', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      })
       
-      // Known restaurant brands with colors
-      const knownBrands: Record<string, { name: string; colors: string[]; industry: string }> = {
-        'chipotle': { name: 'Chipotle', colors: ['#441500', '#A81612', '#F5F0EB'], industry: 'Restaurant' },
-        'dominos': { name: "Domino's", colors: ['#006491', '#E31837', '#FFFFFF'], industry: 'Restaurant' },
-        'wingstop': { name: 'Wingstop', colors: ['#024731', '#FFD100', '#FFFFFF'], industry: 'Restaurant' },
-        'pizzahut': { name: 'Pizza Hut', colors: ['#E31837', '#00A160', '#FFFFFF'], industry: 'Restaurant' },
-        'papajohns': { name: "Papa John's", colors: ['#006B3F', '#E31837', '#FFFFFF'], industry: 'Restaurant' },
-        'buffalowildwings': { name: 'Buffalo Wild Wings', colors: ['#FFB612', '#000000', '#FFFFFF'], industry: 'Restaurant' },
-        'tacobell': { name: 'Taco Bell', colors: ['#702082', '#FF5A00', '#FFFFFF'], industry: 'Restaurant' },
-        'wendys': { name: "Wendy's", colors: ['#E2203D', '#199FDA', '#FFFFFF'], industry: 'Restaurant' },
-        'mcdonalds': { name: "McDonald's", colors: ['#FFC72C', '#DA291C', '#27251F'], industry: 'Restaurant' },
+      const data = await res.json()
+      
+      if (data.name) {
+        setBrandName(data.name)
+        setName(`${data.name} - Super Bowl`)
       }
       
-      const known = knownBrands[brandNameFromUrl.toLowerCase()]
-      if (known) {
-        setBrandName(known.name)
-        setBrandIndustry(known.industry)
-        setBrandColors(known.colors)
-        setName(`${known.name} - Super Bowl`)
-      } else {
+      if (data.colors && data.colors.length > 0) {
+        setBrandColors(data.colors)
+      }
+      
+      if (data.logo) {
+        setBrandLogo(data.logo)
+      }
+      
+      // Default to Restaurant industry for now
+      setBrandIndustry('Restaurant')
+      
+    } catch (e) {
+      console.error('Error extracting brand:', e)
+      // Fallback to domain parsing
+      try {
+        const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`)
+        const domain = urlObj.hostname.replace('www.', '')
+        const brandNameFromUrl = domain.split('.')[0]
         const prettyName = brandNameFromUrl.charAt(0).toUpperCase() + brandNameFromUrl.slice(1)
         setBrandName(prettyName)
         setBrandIndustry('Restaurant')
         setName(`${prettyName} - Super Bowl`)
+      } catch {
+        // Ignore
       }
-    } catch (e) {
-      console.error('Error extracting brand:', e)
     }
     
     setIsLoadingBrand(false)
