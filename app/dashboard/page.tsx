@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { 
   Zap, ArrowLeft, Loader2, Upload, Palette, Globe,
   Image as ImageIcon, Video, Send, Clock, Settings,
-  Sparkles, Bomb, ChevronRight, ExternalLink, Users, Plus
+  Sparkles, Bomb, ChevronRight, ExternalLink, Users, Plus, TrendingUp
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -28,6 +28,11 @@ import { CampaignList, CampaignCard, AddCampaignCard } from '@/components/campai
 import { AvatarCard, AddAvatarCard } from '@/components/avatar-card'
 import { CampaignModal } from '@/components/campaign-modal'
 import { AvatarModal } from '@/components/avatar-modal'
+
+// Bot/Markets imports
+import { BotProfile, BOTS, getBotsWithStats, getLeaderboard, simulateBotReactions, Trade, getRecentTrades, seedDemoTrades } from '@/lib/bots'
+import { BotCard } from '@/components/bot-card'
+import { TradeFeed } from '@/components/trade-feed'
 
 interface ContentItem {
   id: string
@@ -661,6 +666,10 @@ function DashboardContent() {
                     <Users className="w-3.5 h-3.5" />
                     Avatars
                   </TabsTrigger>
+                  <TabsTrigger value="markets" className="gap-1.5">
+                    <TrendingUp className="w-3.5 h-3.5" />
+                    Markets
+                  </TabsTrigger>
                 </TabsList>
 
                 {/* Stats */}
@@ -860,6 +869,87 @@ function DashboardContent() {
                       onGenerate={handleGenerateForAvatar}
                       onDelete={handleAvatarDeleted}
                     />
+                  ))}
+                </div>
+              </TabsContent>
+
+              {/* Markets Tab */}
+              <TabsContent value="markets" className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold">Prediction Markets</h2>
+                    <p className="text-sm text-muted-foreground">Brand bots competing on game predictions</p>
+                  </div>
+                  <Button 
+                    onClick={async () => {
+                      // Simulate an event to trigger bot reactions
+                      const events = ['TOUCHDOWN', 'INTERCEPTION', 'FUMBLE', 'BIG_PLAY']
+                      const randomEvent = events[Math.floor(Math.random() * events.length)]
+                      try {
+                        await fetch('/api/bots/trade', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ 
+                            action: 'simulate',
+                            eventType: randomEvent,
+                            team: Math.random() > 0.5 ? 'KC' : 'PHI'
+                          })
+                        })
+                        // Refresh would happen via state update
+                      } catch (e) {
+                        console.error('Simulate error:', e)
+                      }
+                    }}
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    <Zap className="w-4 h-4" />
+                    Simulate Event
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Trade Feed */}
+                  <div className="lg:col-span-2">
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium">Live Trade Feed</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <TradeFeed trades={getRecentTrades(20)} showComments />
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Leaderboard */}
+                  <div>
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium">Leaderboard</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        {getLeaderboard().slice(0, 5).map((bot, i) => (
+                          <div key={bot.id} className="flex items-center gap-3 p-2 rounded-md bg-muted/50">
+                            <span className="text-lg">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`}</span>
+                            <span className="text-lg">{bot.avatar}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{bot.name}</p>
+                              <p className="text-xs text-muted-foreground">{bot.winRate.toFixed(0)}% win rate</p>
+                            </div>
+                            <span className={`text-sm font-mono ${bot.totalPnL >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                              {bot.totalPnL >= 0 ? '+' : ''}${bot.totalPnL.toFixed(0)}
+                            </span>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+
+                {/* Bot Cards */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {getBotsWithStats().map(bot => (
+                    <BotCard key={bot.id} {...bot} />
                   ))}
                 </div>
               </TabsContent>
