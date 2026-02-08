@@ -278,10 +278,24 @@ Q4 2:30 - FUMBLE - Eagles - Pacheco forces turnover`
 
           {/* ESPN API Tab */}
           <TabsContent value="espn" className="space-y-4">
+            {/* Game Selector */}
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Select Game</Label>
+              <select
+                className="w-full text-sm border border-input rounded-md px-3 py-2 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                defaultValue=""
+              >
+                <option value="">Select a live game...</option>
+                <option value="super-bowl-lix">🏈 Super Bowl LIX - Chiefs vs Eagles</option>
+                <option value="afc-championship">🏈 AFC Championship</option>
+                <option value="nfc-championship">🏈 NFC Championship</option>
+              </select>
+            </div>
+            
             <div className="flex items-center justify-between">
               <div>
                 <Label htmlFor="espn-toggle" className="text-sm">Use Live ESPN Data</Label>
-                <p className="text-xs text-muted-foreground">Automatically detect game events</p>
+                <p className="text-xs text-muted-foreground">Auto-trigger on game events</p>
               </div>
               <Switch
                 id="espn-toggle"
@@ -298,8 +312,8 @@ Q4 2:30 - FUMBLE - Eagles - Pacheco forces turnover`
                 'bg-gray-400'
               }`} />
               <span className="text-xs">
-                {espnStatus === 'connected' && 'Connected to ESPN API'}
-                {espnStatus === 'connecting' && 'Connecting...'}
+                {espnStatus === 'connected' && 'Connected - Listening for events'}
+                {espnStatus === 'connecting' && 'Connecting to ESPN...'}
                 {espnStatus === 'error' && 'Connection error'}
                 {espnStatus === 'idle' && 'Not connected'}
               </span>
@@ -311,8 +325,8 @@ Q4 2:30 - FUMBLE - Eagles - Pacheco forces turnover`
             {espnEnabled && espnStatus === 'connected' && (
               <div className="p-3 rounded-md border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950">
                 <p className="text-xs text-green-700 dark:text-green-300">
-                  Events will auto-trigger when detected from the live game feed.
-                  Use the Demo Events in the sidebar for testing.
+                  ✓ Watching for touchdowns, interceptions, field goals...
+                  <br />Content will auto-generate when events occur.
                 </p>
               </div>
             )}

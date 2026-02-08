@@ -199,32 +199,42 @@ function DashboardContent() {
     setCustomEvents(getCustomEvents())
   }, [])
   
-  // Auto-advance event playback
+  // Auto-advance event playback with generation
   useEffect(() => {
     if (!isEventPlaying || customEvents.length === 0) return
     
-    const timer = setInterval(() => {
+    // Generate content for current event when play starts
+    const currentEvt = customEvents[customEventIndex]
+    if (currentEvt && brand.loaded && !isGenerating) {
+      setCurrentEvent({
+        type: currentEvt.type,
+        description: currentEvt.description,
+        team: currentEvt.team,
+        timestamp: new Date()
+      })
+      setCurrentEventId(currentEvt.id)
+      // Auto-generate (single image) with small delay
+      setTimeout(() => {
+        generateSingleFromEvent(currentEvt)
+      }, 500)
+    }
+    
+    // Random delay between 3-7 seconds for realistic feel
+    const delay = 3000 + Math.random() * 4000
+    
+    const timer = setTimeout(() => {
       setCustomEventIndex(prev => {
         const next = prev + 1
         if (next >= customEvents.length) {
           setIsEventPlaying(false)
           return prev
         }
-        // Trigger the event
-        const event = customEvents[next]
-        setCurrentEvent({
-          type: event.type,
-          description: event.description,
-          team: event.team,
-          timestamp: new Date()
-        })
-        setCurrentEventId(event.id)
         return next
       })
-    }, 5000) // 5 seconds per event in playback mode
+    }, delay)
     
-    return () => clearInterval(timer)
-  }, [isEventPlaying, customEvents])
+    return () => clearTimeout(timer)
+  }, [isEventPlaying, customEventIndex, customEvents, brand.loaded])
   
   // Update campaign avatars when active campaign changes
   useEffect(() => {
@@ -482,6 +492,55 @@ function DashboardContent() {
       }
     } catch (error) {
       console.error('Generation error:', error)
+    }
+    
+    setLatency(Math.round((Date.now() - startTime) / 1000))
+    setIsGenerating(false)
+  }
+
+  // Auto-playback mode - single image per event
+  const generateSingleFromEvent = async (event: { type: string; description: string; team?: string }) => {
+    if (!brand.loaded || isGenerating) return
+    
+    setIsGenerating(true)
+    const startTime = Date.now()
+    
+    const basePrompt = `${brand.name} ${brand.industry.toLowerCase()} celebrating ${event.type}! ${event.description}. Brand colors, professional marketing photo.`
+    
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: basePrompt,
+          model: 'flux-schnell', // Fast for auto mode
+          aspectRatio: 'square_hd',
+          numImages: 1, // Single image per event
+          brand: { name: brand.name, industry: brand.industry, colors: brand.colors },
+          event: { type: event.type, description: event.description }
+        })
+      })
+      
+      const data = await res.json()
+      
+      if (data.success && data.content && data.content[0]) {
+        const newItem: ContentItem = {
+          id: `auto-${Date.now()}`,
+          type: 'image',
+          status: 'ready',
+          url: data.content[0].url,
+          model: 'flux-schnell',
+          caption: `${event.type}! ${brand.name} 🏈 - ${event.description}`,
+          platform: ['Instagram', 'Twitter', 'TikTok', 'Facebook'][Math.floor(Math.random() * 4)],
+        }
+        setContent(prev => [newItem, ...prev])
+        
+        if (activeCampaign) {
+          incrementCampaignContentCount(activeCampaign.id, 1)
+        }
+      }
+    } catch (error) {
+      console.error('Auto-generation error:', error)
     }
     
     setLatency(Math.round((Date.now() - startTime) / 1000))
