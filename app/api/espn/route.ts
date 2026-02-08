@@ -1,38 +1,19 @@
 import { NextResponse } from 'next/server'
+import {
+  detectEventType,
+  isSignificantEvent,
+  getEventLabel,
+  SIGNIFICANT_EVENTS,
+  type EventType,
+  type GameEvent,
+  type GameState,
+} from '@/lib/events'
 
 // ESPN API endpoints
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl'
 
-interface GameEvent {
-  type: string
-  description: string
-  team?: string
-  player?: string
-  timestamp: string
-  confidence: number
-}
-
-interface GameStatus {
-  gameId: string
-  status: 'pre' | 'in' | 'post'
-  period: number
-  clock: string
-  homeTeam: {
-    name: string
-    abbreviation: string
-    score: number
-  }
-  awayTeam: {
-    name: string
-    abbreviation: string
-    score: number
-  }
-  lastPlay?: GameEvent
-  venue?: string
-}
-
 // Get current NFL games
-async function getCurrentGames(): Promise<GameStatus[]> {
+async function getCurrentGames(): Promise<GameState[]> {
   try {
     const response = await fetch(`${ESPN_BASE}/scoreboard`, {
       next: { revalidate: 10 } // Cache for 10 seconds
@@ -56,13 +37,20 @@ async function getCurrentGames(): Promise<GameStatus[]> {
       const situation = competition?.situation
       
       // Parse last play into event
-      let lastPlay: GameEvent | undefined
+      let lastEvent: GameEvent | undefined
       if (situation?.lastPlay) {
-        const playType = parsePlayType(situation.lastPlay.text || '')
-        lastPlay = {
-          type: playType,
-          description: situation.lastPlay.text || '',
+        const playText = situation.lastPlay.text || ''
+        const eventType = detectEventType(playText)
+        lastEvent = {
+          id: `${event.id}-${Date.now()}`,
+          type: eventType,
+          description: playText,
           team: situation.lastPlay.team?.abbreviation,
+          teamFull: situation.lastPlay.team?.displayName,
+          quarter: event.status?.period || 0,
+          clock: event.status?.displayClock || '',
+          homeScore: parseInt(homeTeam?.score || '0'),
+          awayScore: parseInt(awayTeam?.score || '0'),
           timestamp: new Date().toISOString(),
           confidence: 0.95
         }
@@ -71,19 +59,21 @@ async function getCurrentGames(): Promise<GameStatus[]> {
       return {
         gameId: event.id,
         status: event.status?.type?.state || 'pre',
-        period: event.status?.period || 0,
+        quarter: event.status?.period || 0,
         clock: event.status?.displayClock || '',
         homeTeam: {
           name: homeTeam?.team?.displayName || '',
           abbreviation: homeTeam?.team?.abbreviation || '',
-          score: parseInt(homeTeam?.score || '0')
+          score: parseInt(homeTeam?.score || '0'),
+          logo: homeTeam?.team?.logo
         },
         awayTeam: {
           name: awayTeam?.team?.displayName || '',
           abbreviation: awayTeam?.team?.abbreviation || '',
-          score: parseInt(awayTeam?.score || '0')
+          score: parseInt(awayTeam?.score || '0'),
+          logo: awayTeam?.team?.logo
         },
-        lastPlay,
+        lastEvent,
         venue: competition?.venue?.fullName
       }
     })
@@ -91,44 +81,6 @@ async function getCurrentGames(): Promise<GameStatus[]> {
     console.error('ESPN fetch error:', error)
     return []
   }
-}
-
-// Parse play text to determine event type
-function parsePlayType(playText: string): string {
-  const text = playText.toLowerCase()
-  
-  if (text.includes('touchdown') || text.includes(' td ')) {
-    return 'TOUCHDOWN'
-  }
-  if (text.includes('field goal') || text.includes('fg ')) {
-    return 'FIELD_GOAL'
-  }
-  if (text.includes('interception') || text.includes('intercepted')) {
-    return 'INTERCEPTION'
-  }
-  if (text.includes('fumble')) {
-    return 'FUMBLE'
-  }
-  if (text.includes('sack')) {
-    return 'SACK'
-  }
-  if (text.includes('safety')) {
-    return 'SAFETY'
-  }
-  if (text.includes('punt')) {
-    return 'PUNT'
-  }
-  if (text.includes('kickoff')) {
-    return 'KICKOFF'
-  }
-  
-  // Check for big plays (20+ yards)
-  const yardMatch = text.match(/(\d+)\s*yard/i)
-  if (yardMatch && parseInt(yardMatch[1]) >= 20) {
-    return 'BIG_PLAY'
-  }
-  
-  return 'PLAY'
 }
 
 // GET endpoint - fetch current games
@@ -156,7 +108,7 @@ export async function GET(request: Request) {
 // POST endpoint - detect significant events
 export async function POST(request: Request) {
   try {
-    const { gameId, lastKnownPlay } = await request.json()
+    const { gameId, lastKnownPlay, lastKnownEventId } = await request.json()
     
     const games = await getCurrentGames()
     const game = gameId 
@@ -171,22 +123,28 @@ export async function POST(request: Request) {
     }
     
     // Check if there's a new significant play
-    if (game.lastPlay && game.lastPlay.description !== lastKnownPlay) {
-      const significantTypes = ['TOUCHDOWN', 'FIELD_GOAL', 'INTERCEPTION', 'FUMBLE', 'SAFETY', 'BIG_PLAY']
-      
-      if (significantTypes.includes(game.lastPlay.type)) {
-        return NextResponse.json({
-          detected: true,
-          event: game.lastPlay,
-          game: {
-            homeTeam: game.homeTeam,
-            awayTeam: game.awayTeam,
-            score: `${game.awayTeam.abbreviation} ${game.awayTeam.score} - ${game.homeTeam.abbreviation} ${game.homeTeam.score}`,
-            period: game.period,
-            clock: game.clock
-          }
-        })
-      }
+    const lastEvent = game.lastEvent
+    const isNewEvent = lastEvent && (
+      lastEvent.description !== lastKnownPlay ||
+      (lastKnownEventId && lastEvent.id !== lastKnownEventId)
+    )
+    
+    if (isNewEvent && lastEvent && isSignificantEvent(lastEvent.type)) {
+      return NextResponse.json({
+        detected: true,
+        event: {
+          ...lastEvent,
+          label: getEventLabel(lastEvent.type),
+        },
+        game: {
+          homeTeam: game.homeTeam,
+          awayTeam: game.awayTeam,
+          score: `${game.awayTeam.abbreviation} ${game.awayTeam.score} - ${game.homeTeam.abbreviation} ${game.homeTeam.score}`,
+          quarter: game.quarter,
+          clock: game.clock,
+          venue: game.venue
+        }
+      })
     }
     
     return NextResponse.json({
@@ -195,9 +153,10 @@ export async function POST(request: Request) {
         homeTeam: game.homeTeam,
         awayTeam: game.awayTeam,
         score: `${game.awayTeam.abbreviation} ${game.awayTeam.score} - ${game.homeTeam.abbreviation} ${game.homeTeam.score}`,
-        period: game.period,
+        quarter: game.quarter,
         clock: game.clock,
-        lastPlay: game.lastPlay?.description
+        lastPlay: lastEvent?.description,
+        lastEventId: lastEvent?.id
       }
     })
   } catch (error) {

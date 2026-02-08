@@ -1,15 +1,22 @@
 'use client'
 
-import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { 
-  Zap, Play, Pause, Plus, X,
-  Image as ImageIcon, Video, Type, 
-  Check, Clock, AlertCircle, Loader2,
-  Send, ArrowLeft, Sparkles, Bomb, Calendar,
-  Settings, RefreshCw, ChevronDown
-} from 'lucide-react'
 import Link from 'next/link'
+import { 
+  Zap, ArrowLeft, Loader2, Upload, Palette, Globe,
+  Image as ImageIcon, Video, Send, Clock, Settings,
+  Sparkles, Bomb, ChevronRight, ExternalLink
+} from 'lucide-react'
+
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
 
 interface ContentItem {
   id: string
@@ -26,6 +33,7 @@ interface Brand {
   domain: string
   colors: string[]
   industry: string
+  logo?: string
   loaded: boolean
 }
 
@@ -44,17 +52,16 @@ interface GameStatus {
 }
 
 const MODELS = [
-  { id: 'flux-schnell', name: 'Flux Schnell', type: 'image', speed: 'Fastest' },
-  { id: 'flux-pro', name: 'Flux Pro', type: 'image', speed: 'Fast' },
+  { id: 'flux-schnell', name: 'Flux Schnell', type: 'image', speed: 'Fast' },
+  { id: 'flux-pro', name: 'Flux Pro', type: 'image', speed: 'Quality' },
   { id: 'grok-image', name: 'Grok Image', type: 'image', speed: 'Fast' },
   { id: 'kling-video', name: 'Kling Video', type: 'video', speed: 'Slow' },
 ]
 
 const ASPECT_RATIOS = [
-  { id: '1:1', name: 'Square', desc: '1:1' },
-  { id: '4:3', name: 'Landscape', desc: '4:3' },
-  { id: '9:16', name: 'Story', desc: '9:16' },
-  { id: '16:9', name: 'Wide', desc: '16:9' },
+  { id: 'square_hd', name: 'Square', ratio: '1:1' },
+  { id: 'landscape_16_9', name: 'Wide', ratio: '16:9' },
+  { id: 'portrait_9_16', name: 'Story', ratio: '9:16' },
 ]
 
 function extractBrandFromUrl(url: string): Brand {
@@ -64,16 +71,18 @@ function extractBrandFromUrl(url: string): Brand {
     const brandName = domain.split('.')[0]
     
     const knownBrands: Record<string, Partial<Brand>> = {
-      'chipotle': { name: 'Chipotle', colors: ['#441500', '#A81612'], industry: 'Restaurant' },
-      'dominos': { name: "Domino's", colors: ['#006491', '#E31837'], industry: 'Restaurant' },
-      'wingstop': { name: 'Wingstop', colors: ['#024731', '#FFD100'], industry: 'Restaurant' },
+      'chipotle': { name: 'Chipotle', colors: ['#441500', '#A81612', '#F5F0EB'], industry: 'Restaurant' },
+      'dominos': { name: "Domino's", colors: ['#006491', '#E31837', '#FFFFFF'], industry: 'Restaurant' },
+      'wingstop': { name: 'Wingstop', colors: ['#024731', '#FFD100', '#FFFFFF'], industry: 'Restaurant' },
+      'nike': { name: 'Nike', colors: ['#111111', '#FFFFFF', '#F5F5F5'], industry: 'Sportswear' },
+      'cocacola': { name: 'Coca-Cola', colors: ['#F40009', '#FFFFFF', '#000000'], industry: 'Beverage' },
     }
     
     const known = knownBrands[brandName.toLowerCase()]
     return {
       name: known?.name || brandName.charAt(0).toUpperCase() + brandName.slice(1),
       domain,
-      colors: known?.colors || ['#18181b', '#ffffff'],
+      colors: known?.colors || ['#18181b', '#f4f4f5', '#ffffff'],
       industry: known?.industry || 'Business',
       loaded: true
     }
@@ -86,19 +95,17 @@ function DashboardContent() {
   const searchParams = useSearchParams()
   
   // State
-  const [activeTab, setActiveTab] = useState<'quality' | 'nuke'>('quality')
   const [businessUrl, setBusinessUrl] = useState('')
   const [brand, setBrand] = useState<Brand>({ name: '', domain: '', colors: [], industry: '', loaded: false })
-  const [selectedModels, setSelectedModels] = useState<string[]>(['flux-schnell'])
-  const [aspectRatio, setAspectRatio] = useState('1:1')
+  const [selectedModel, setSelectedModel] = useState('flux-schnell')
+  const [aspectRatio, setAspectRatio] = useState('square_hd')
   const [prompt, setPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [content, setContent] = useState<ContentItem[]>([])
-  const [scheduledContent, setScheduledContent] = useState<ContentItem[]>([])
-  const [currentEvent, setCurrentEvent] = useState<GameEvent | null>(null)
-  const [gameStatus, setGameStatus] = useState<GameStatus | null>(null)
-  const [isArmed, setIsArmed] = useState(false)
+  const [autoGenerate, setAutoGenerate] = useState(false)
   const [latency, setLatency] = useState(0)
+  const [gameStatus, setGameStatus] = useState<GameStatus | null>(null)
+  const [currentEvent, setCurrentEvent] = useState<GameEvent | null>(null)
 
   // Load brand from URL param
   useEffect(() => {
@@ -109,9 +116,9 @@ function DashboardContent() {
     }
   }, [searchParams])
 
-  // Poll ESPN for live game data when armed
+  // Poll ESPN when auto-generate is on
   useEffect(() => {
-    if (!isArmed) return
+    if (!autoGenerate) return
     
     const pollGame = async () => {
       try {
@@ -142,30 +149,21 @@ function DashboardContent() {
     }
     
     pollGame()
-    const interval = setInterval(pollGame, 10000) // Poll every 10s
+    const interval = setInterval(pollGame, 10000)
     return () => clearInterval(interval)
-  }, [isArmed])
+  }, [autoGenerate])
 
   const handleAddBrand = () => {
     if (!businessUrl) return
     setBrand(extractBrandFromUrl(businessUrl))
   }
 
-  const toggleModel = (modelId: string) => {
-    setSelectedModels(prev => 
-      prev.includes(modelId) 
-        ? prev.filter(m => m !== modelId)
-        : [...prev, modelId]
-    )
-  }
-
-  // Generate content using real API
-  const generateContent = async () => {
-    if (!brand.loaded || selectedModels.length === 0) return
+  // Studio mode - high quality generation
+  const generateStudio = async () => {
+    if (!brand.loaded) return
     
     setIsGenerating(true)
     const startTime = Date.now()
-    setContent([])
     
     const event = currentEvent || {
       type: 'TOUCHDOWN',
@@ -173,41 +171,36 @@ function DashboardContent() {
       timestamp: new Date()
     }
     
-    const basePrompt = prompt || `Exciting ${brand.industry.toLowerCase()} marketing content celebrating a ${event.type}`
+    const basePrompt = prompt || `Professional marketing content for ${brand.name}, a ${brand.industry.toLowerCase()} brand. Style: modern, clean, premium. Event: ${event.type}`
     
     try {
-      // Generate with each selected model
-      for (const modelId of selectedModels) {
-        const model = MODELS.find(m => m.id === modelId)
-        
-        const res = await fetch('/api/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            prompt: basePrompt,
-            model: modelId,
-            aspectRatio,
-            numImages: activeTab === 'quality' ? 1 : 4,
-            brand: { name: brand.name, industry: brand.industry },
-            event
-          })
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: basePrompt,
+          model: selectedModel,
+          aspectRatio,
+          numImages: 4,
+          brand: { name: brand.name, industry: brand.industry, colors: brand.colors },
+          event
         })
+      })
+      
+      const data = await res.json()
+      
+      if (data.success && data.content) {
+        const newItems: ContentItem[] = data.content.map((item: { url: string }, i: number) => ({
+          id: `studio-${Date.now()}-${i}`,
+          type: selectedModel.includes('video') ? 'video' : 'image',
+          status: 'ready',
+          url: item.url,
+          model: selectedModel,
+          caption: `${event.type}! ${brand.name} 🏈`,
+          platform: ['Instagram', 'Twitter', 'TikTok', 'Facebook'][i % 4]
+        }))
         
-        const data = await res.json()
-        
-        if (data.success && data.content) {
-          const newItems: ContentItem[] = data.content.map((item: any, i: number) => ({
-            id: `${modelId}-${Date.now()}-${i}`,
-            type: model?.type || 'image',
-            status: 'ready',
-            url: item.url,
-            model: modelId,
-            caption: `${event.type}! ${brand.name} 🏈`,
-            platform: ['instagram', 'twitter', 'tiktok'][i % 3]
-          }))
-          
-          setContent(prev => [...prev, ...newItems])
-        }
+        setContent(prev => [...newItems, ...prev])
       }
     } catch (error) {
       console.error('Generation error:', error)
@@ -217,13 +210,12 @@ function DashboardContent() {
     setIsGenerating(false)
   }
 
-  // Nuke mode - fast mass generation
+  // Nuke mode - mass generation
   const triggerNuke = async () => {
     if (!brand.loaded) return
     
     setIsGenerating(true)
     const startTime = Date.now()
-    setContent([])
     
     const event = currentEvent || {
       type: 'TOUCHDOWN', 
@@ -231,306 +223,446 @@ function DashboardContent() {
       timestamp: new Date()
     }
     
-    // Generate 100 items fast (simulated for demo speed)
-    const total = 500
-    const batchSize = 50
-    
-    for (let i = 0; i < total; i += batchSize) {
-      await new Promise(r => setTimeout(r, 30))
+    // Generate batch with API
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: `Quick marketing content for ${brand.name}: ${event.type} moment`,
+          model: 'flux-schnell',
+          aspectRatio: 'square_hd',
+          numImages: 4,
+          brand: { name: brand.name, industry: brand.industry },
+          event
+        })
+      })
       
-      const batch: ContentItem[] = Array(Math.min(batchSize, total - i)).fill(null).map((_, j) => ({
-        id: `nuke-${i + j}`,
+      const data = await res.json()
+      
+      if (data.success && data.content) {
+        const realItems: ContentItem[] = data.content.map((item: { url: string }, i: number) => ({
+          id: `nuke-real-${Date.now()}-${i}`,
+          type: 'image',
+          status: 'ready',
+          url: item.url,
+          model: 'flux-schnell',
+          caption: `${event.type}! ${brand.name} 🏈`,
+          platform: ['Instagram', 'Twitter', 'TikTok', 'Facebook'][i % 4]
+        }))
+        
+        setContent(prev => [...realItems, ...prev])
+      }
+    } catch (error) {
+      console.error('Generation error:', error)
+    }
+    
+    // Simulate additional items for demo
+    const additionalCount = 96
+    for (let i = 0; i < additionalCount; i += 24) {
+      await new Promise(r => setTimeout(r, 50))
+      
+      const batch: ContentItem[] = Array(Math.min(24, additionalCount - i)).fill(null).map((_, j) => ({
+        id: `nuke-sim-${Date.now()}-${i + j}`,
         type: Math.random() > 0.3 ? 'image' : 'video',
         status: 'ready',
         caption: `${event.type}! ${brand.name} 🏈`,
-        platform: ['instagram', 'twitter', 'tiktok', 'facebook'][Math.floor(Math.random() * 4)],
+        platform: ['Instagram', 'Twitter', 'TikTok', 'Facebook'][Math.floor(Math.random() * 4)],
         model: 'flux-schnell'
       }))
       
-      setContent(prev => [...prev, ...batch])
+      setContent(prev => [...batch, ...prev])
     }
     
     setLatency(Math.round((Date.now() - startTime) / 1000))
     setIsGenerating(false)
   }
 
-  const scheduleItem = (item: ContentItem) => {
-    setScheduledContent(prev => [...prev, { ...item, status: 'scheduled' }])
-    setContent(prev => prev.filter(c => c.id !== item.id))
-  }
-
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="h-14 border-b border-zinc-200 flex items-center px-4 sticky top-0 bg-white z-50">
-        <Link href="/" className="mr-3 text-zinc-400 hover:text-zinc-600">
-          <ArrowLeft className="w-4 h-4" />
-        </Link>
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 bg-zinc-900 rounded flex items-center justify-center">
-            <Zap className="w-3.5 h-3.5 text-white" />
+      <header className="h-14 border-b flex items-center justify-between px-4 sticky top-0 bg-background/95 backdrop-blur z-50">
+        <div className="flex items-center gap-3">
+          <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <Separator orientation="vertical" className="h-6" />
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-foreground rounded flex items-center justify-center">
+              <Zap className="w-3.5 h-3.5 text-background" />
+            </div>
+            <span className="font-medium text-sm">Moment Machine</span>
           </div>
-          <span className="font-medium text-sm">Moment Machine</span>
         </div>
         
-        <div className="ml-auto flex items-center gap-3">
+        <div className="flex items-center gap-4">
           {gameStatus && (
-            <div className="text-xs text-zinc-500 font-mono">
+            <div className="text-xs text-muted-foreground font-mono">
               {gameStatus.awayTeam.abbreviation} {gameStatus.awayTeam.score} - {gameStatus.homeTeam.abbreviation} {gameStatus.homeTeam.score} • Q{gameStatus.period} {gameStatus.clock}
             </div>
           )}
-          <button
-            onClick={() => setIsArmed(!isArmed)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-              isArmed ? 'bg-emerald-100 text-emerald-700' : 'bg-zinc-100 text-zinc-600'
-            }`}
-          >
-            <div className={`w-1.5 h-1.5 rounded-full ${isArmed ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-400'}`} />
-            {isArmed ? 'Live' : 'Standby'}
-          </button>
+          <div className="flex items-center gap-2">
+            <Switch 
+              id="auto-generate" 
+              checked={autoGenerate} 
+              onCheckedChange={setAutoGenerate}
+            />
+            <Label htmlFor="auto-generate" className="text-sm cursor-pointer">
+              {autoGenerate ? (
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Auto
+                </span>
+              ) : 'Manual'}
+            </Label>
+          </div>
         </div>
       </header>
 
-      {/* Tabs */}
-      <div className="border-b border-zinc-200">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="flex">
-            {[
-              { id: 'quality', label: 'Studio', icon: Sparkles },
-              { id: 'nuke', label: 'Nuke', icon: Bomb },
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as 'quality' | 'nuke')}
-                className={`flex items-center gap-1.5 px-4 py-3 text-sm border-b-2 transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-zinc-900 text-zinc-900 font-medium'
-                    : 'border-transparent text-zinc-500'
-                }`}
-              >
-                <tab.icon className="w-4 h-4" />
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        <div className="grid grid-cols-12 gap-6">
-          
-          {/* Left Panel - Configuration */}
-          <div className="col-span-4 space-y-4">
+      <div className="flex">
+        {/* Sidebar */}
+        <aside className="w-80 border-r min-h-[calc(100vh-3.5rem)] p-4 space-y-6">
+          {/* Brand Setup */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <Globe className="w-3.5 h-3.5" />
+              Brand
+            </div>
             
-            {/* Brand */}
-            <div className="border border-zinc-200 rounded-lg p-4">
-              <div className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-3">Brand</div>
+            <div className="space-y-3">
               <div className="flex gap-2">
-                <input
+                <Input
                   value={businessUrl}
                   onChange={e => setBusinessUrl(e.target.value)}
                   placeholder="yourbusiness.com"
-                  className="flex-1 text-sm border border-zinc-200 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                  className="h-9 text-sm"
+                  onKeyDown={e => e.key === 'Enter' && handleAddBrand()}
                 />
-                <button
+                <Button 
+                  size="sm" 
                   onClick={handleAddBrand}
-                  className="px-3 py-2 bg-zinc-900 text-white text-sm rounded hover:bg-zinc-800"
+                  className="shrink-0"
                 >
                   Add
-                </button>
+                </Button>
               </div>
+              
               {brand.loaded && (
-                <div className="mt-3 flex items-center gap-2 text-sm">
-                  <div className="flex gap-0.5">
-                    {brand.colors.map((c, i) => (
-                      <div key={i} className="w-3 h-3 rounded-full" style={{ backgroundColor: c }} />
-                    ))}
-                  </div>
-                  <span className="font-medium">{brand.name}</span>
-                  <span className="text-zinc-400">• {brand.industry}</span>
-                </div>
-              )}
-            </div>
-
-            {activeTab === 'quality' && (
-              <>
-                {/* Models */}
-                <div className="border border-zinc-200 rounded-lg p-4">
-                  <div className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-3">Models</div>
-                  <div className="space-y-1.5">
-                    {MODELS.map(model => (
-                      <button
-                        key={model.id}
-                        onClick={() => toggleModel(model.id)}
-                        className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm text-left transition-colors ${
-                          selectedModels.includes(model.id)
-                            ? 'bg-zinc-100'
-                            : 'hover:bg-zinc-50'
-                        }`}
-                      >
-                        <div className={`w-4 h-4 rounded border flex items-center justify-center ${
-                          selectedModels.includes(model.id) ? 'bg-zinc-900 border-zinc-900' : 'border-zinc-300'
-                        }`}>
-                          {selectedModels.includes(model.id) && <Check className="w-3 h-3 text-white" />}
-                        </div>
-                        <span className="flex-1">{model.name}</span>
-                        <span className="text-xs text-zinc-400">{model.type}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Prompt */}
-                <div className="border border-zinc-200 rounded-lg p-4">
-                  <div className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-3">Prompt</div>
-                  <textarea
-                    value={prompt}
-                    onChange={e => setPrompt(e.target.value)}
-                    placeholder="Describe the content you want..."
-                    className="w-full text-sm border border-zinc-200 rounded px-3 py-2 h-24 resize-none focus:outline-none focus:ring-1 focus:ring-zinc-400"
-                  />
-                </div>
-
-                {/* Aspect Ratio */}
-                <div className="border border-zinc-200 rounded-lg p-4">
-                  <div className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-3">Aspect Ratio</div>
-                  <div className="flex gap-2">
-                    {ASPECT_RATIOS.map(ar => (
-                      <button
-                        key={ar.id}
-                        onClick={() => setAspectRatio(ar.id)}
-                        className={`flex-1 py-2 text-xs rounded border transition-colors ${
-                          aspectRatio === ar.id
-                            ? 'border-zinc-900 bg-zinc-900 text-white'
-                            : 'border-zinc-200 hover:border-zinc-300'
-                        }`}
-                      >
-                        {ar.desc}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Event */}
-            {currentEvent && (
-              <div className="border border-amber-200 bg-amber-50 rounded-lg p-4">
-                <div className="flex items-center gap-2 text-amber-700 text-sm font-medium mb-1">
-                  <AlertCircle className="w-4 h-4" />
-                  {currentEvent.type}
-                </div>
-                <p className="text-sm text-amber-600">{currentEvent.description}</p>
-              </div>
-            )}
-
-            {/* Generate Button */}
-            <button
-              onClick={activeTab === 'quality' ? generateContent : triggerNuke}
-              disabled={!brand.loaded || isGenerating}
-              className="w-full py-3 bg-zinc-900 text-white rounded-lg font-medium text-sm hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Zap className="w-4 h-4" />
-                  {activeTab === 'quality' ? 'Generate' : 'Launch Nuke'}
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Right Panel - Output */}
-          <div className="col-span-8">
-            
-            {/* Stats */}
-            <div className="grid grid-cols-4 gap-3 mb-4">
-              {[
-                { label: 'Generated', value: content.length },
-                { label: 'Latency', value: `${latency}s` },
-                { label: 'Scheduled', value: scheduledContent.length },
-                { label: 'Models', value: selectedModels.length },
-              ].map(stat => (
-                <div key={stat.label} className="border border-zinc-200 rounded-lg p-3">
-                  <div className="text-xs text-zinc-400">{stat.label}</div>
-                  <div className="text-lg font-semibold font-mono">{stat.value}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Content Area */}
-            <div className="border border-zinc-200 rounded-lg min-h-[400px]">
-              {content.length === 0 ? (
-                <div className="h-[400px] flex flex-col items-center justify-center text-zinc-400">
-                  <ImageIcon className="w-8 h-8 mb-2 opacity-30" />
-                  <p className="text-sm">No generations yet</p>
-                </div>
-              ) : activeTab === 'quality' ? (
-                <div className="p-4 grid grid-cols-2 gap-4">
-                  {content.map(item => (
-                    <div key={item.id} className="border border-zinc-200 rounded-lg overflow-hidden">
-                      <div className="aspect-square bg-zinc-100 flex items-center justify-center">
-                        {item.url ? (
-                          <img src={item.url} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          item.type === 'video' 
-                            ? <Video className="w-8 h-8 text-zinc-300" />
-                            : <ImageIcon className="w-8 h-8 text-zinc-300" />
-                        )}
+                <Card className="bg-muted/30">
+                  <CardContent className="p-3 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-sm">{brand.name}</p>
+                        <p className="text-xs text-muted-foreground">{brand.industry}</p>
                       </div>
-                      <div className="p-3">
-                        <div className="flex items-center gap-2 text-xs text-zinc-400 mb-2">
-                          <span className="capitalize">{item.model}</span>
-                          <span>•</span>
-                          <span className="capitalize">{item.platform}</span>
-                        </div>
-                        <p className="text-sm text-zinc-700 truncate">{item.caption}</p>
-                        <button
-                          onClick={() => scheduleItem(item)}
-                          className="mt-2 w-full py-1.5 text-xs bg-zinc-900 text-white rounded hover:bg-zinc-800"
-                        >
-                          Schedule
-                        </button>
+                      <Badge variant="secondary" className="text-xs">Active</Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Palette className="w-3.5 h-3.5 text-muted-foreground" />
+                      <div className="flex gap-1">
+                        {brand.colors.map((c, i) => (
+                          <div 
+                            key={i} 
+                            className="w-5 h-5 rounded border border-border" 
+                            style={{ backgroundColor: c }} 
+                          />
+                        ))}
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-4">
-                  <div className="grid grid-cols-8 gap-1.5 max-h-[350px] overflow-y-auto">
-                    {content.slice(0, 200).map((item, i) => (
-                      <div
-                        key={item.id}
-                        className="aspect-square bg-zinc-100 rounded flex items-center justify-center"
-                        style={{ animationDelay: `${(i % 50) * 10}ms` }}
-                      >
-                        {item.type === 'video' 
-                          ? <Video className="w-3 h-3 text-blue-400" />
-                          : <ImageIcon className="w-3 h-3 text-zinc-400" />
-                        }
-                      </div>
-                    ))}
-                    {content.length > 200 && (
-                      <div className="aspect-square bg-zinc-200 rounded flex items-center justify-center text-xs font-medium text-zinc-500">
-                        +{content.length - 200}
-                      </div>
-                    )}
-                  </div>
-                  {content.length > 0 && (
-                    <button className="mt-4 w-full py-2.5 bg-zinc-900 text-white rounded-lg font-medium text-sm hover:bg-zinc-800 flex items-center justify-center gap-2">
-                      <Send className="w-4 h-4" />
-                      Deploy All {content.length}
-                    </button>
-                  )}
-                </div>
+                  </CardContent>
+                </Card>
               )}
+              
+              <Button variant="outline" size="sm" className="w-full justify-start gap-2">
+                <Upload className="w-3.5 h-3.5" />
+                Upload Logo
+              </Button>
             </div>
           </div>
-        </div>
+
+          <Separator />
+
+          {/* Model Selection */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5" />
+              Model
+            </div>
+            <div className="space-y-1">
+              {MODELS.map(model => (
+                <button
+                  key={model.id}
+                  onClick={() => setSelectedModel(model.id)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
+                    selectedModel === model.id
+                      ? 'bg-foreground text-background'
+                      : 'hover:bg-muted'
+                  }`}
+                >
+                  <span>{model.name}</span>
+                  <span className={`text-xs ${selectedModel === model.id ? 'text-background/70' : 'text-muted-foreground'}`}>
+                    {model.type} • {model.speed}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Aspect Ratio */}
+          <div className="space-y-3">
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Aspect Ratio
+            </div>
+            <div className="flex gap-2">
+              {ASPECT_RATIOS.map(ar => (
+                <button
+                  key={ar.id}
+                  onClick={() => setAspectRatio(ar.id)}
+                  className={`flex-1 py-2 text-xs rounded-md border transition-colors ${
+                    aspectRatio === ar.id
+                      ? 'border-foreground bg-foreground text-background'
+                      : 'border-border hover:border-foreground/30'
+                  }`}
+                >
+                  {ar.ratio}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Prompt */}
+          <div className="space-y-3">
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Custom Prompt
+            </div>
+            <textarea
+              value={prompt}
+              onChange={e => setPrompt(e.target.value)}
+              placeholder="Describe the content you want, or leave blank for auto-generated prompts..."
+              className="w-full text-sm border border-input rounded-md px-3 py-2 h-20 resize-none focus:outline-none focus:ring-1 focus:ring-ring bg-background"
+            />
+          </div>
+
+          {/* Event indicator */}
+          {currentEvent && (
+            <>
+              <Separator />
+              <Card className="border-amber-200 bg-amber-50">
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-2 text-amber-700 text-sm font-medium mb-1">
+                    <Zap className="w-3.5 h-3.5" />
+                    {currentEvent.type}
+                  </div>
+                  <p className="text-xs text-amber-600">{currentEvent.description}</p>
+                </CardContent>
+              </Card>
+            </>
+          )}
+
+          <Separator />
+
+          {/* Settings link */}
+          <Button variant="ghost" className="w-full justify-start gap-2 text-muted-foreground">
+            <Settings className="w-4 h-4" />
+            Settings
+            <ChevronRight className="w-4 h-4 ml-auto" />
+          </Button>
+        </aside>
+
+        {/* Main Content */}
+        <main className="flex-1 p-6">
+          <Tabs defaultValue="studio" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <TabsList>
+                <TabsTrigger value="studio" className="gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Studio
+                </TabsTrigger>
+                <TabsTrigger value="nuke" className="gap-1.5">
+                  <Bomb className="w-3.5 h-3.5" />
+                  Nuke
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Stats */}
+              <div className="flex gap-4">
+                {[
+                  { label: 'Generated', value: content.length },
+                  { label: 'Latency', value: `${latency}s` },
+                  { label: 'Queued', value: content.filter(c => c.status === 'scheduled').length },
+                ].map(stat => (
+                  <div key={stat.label} className="text-right">
+                    <div className="text-2xl font-semibold font-mono">{stat.value}</div>
+                    <div className="text-xs text-muted-foreground">{stat.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Studio Tab */}
+            <TabsContent value="studio" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold">High-Quality Generation</h2>
+                  <p className="text-sm text-muted-foreground">Create polished, brand-aligned content</p>
+                </div>
+                <Button 
+                  onClick={generateStudio}
+                  disabled={!brand.loaded || isGenerating}
+                  className="gap-2"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-4 h-4" />
+                      Generate
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Content Grid - Studio */}
+              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {content.filter(item => item.url).length === 0 ? (
+                  <div className="col-span-full border border-dashed rounded-lg p-12 flex flex-col items-center justify-center text-muted-foreground">
+                    <ImageIcon className="w-10 h-10 mb-3 opacity-30" />
+                    <p className="text-sm">No content yet</p>
+                    <p className="text-xs">Click Generate to create content</p>
+                  </div>
+                ) : (
+                  content.filter(item => item.url).slice(0, 12).map(item => (
+                    <Card key={item.id} className="overflow-hidden group">
+                      <div className="aspect-square bg-muted relative">
+                        {item.url ? (
+                          <img 
+                            src={item.url} 
+                            alt="" 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            {item.type === 'video' ? (
+                              <Video className="w-8 h-8 text-muted-foreground/30" />
+                            ) : (
+                              <ImageIcon className="w-8 h-8 text-muted-foreground/30" />
+                            )}
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <Button size="sm" variant="secondary" className="h-8">
+                            <Clock className="w-3.5 h-3.5 mr-1" />
+                            Schedule
+                          </Button>
+                          <Button size="sm" variant="secondary" className="h-8">
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <Badge variant="outline" className="text-xs">{item.platform}</Badge>
+                          <span className="text-xs text-muted-foreground capitalize">{item.model?.replace('-', ' ')}</span>
+                        </div>
+                        <p className="text-sm truncate">{item.caption}</p>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            </TabsContent>
+
+            {/* Nuke Tab */}
+            <TabsContent value="nuke" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold">Mass Generation</h2>
+                  <p className="text-sm text-muted-foreground">Generate hundreds of content pieces instantly</p>
+                </div>
+                <Button 
+                  onClick={triggerNuke}
+                  disabled={!brand.loaded || isGenerating}
+                  variant="destructive"
+                  className="gap-2"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Launching...
+                    </>
+                  ) : (
+                    <>
+                      <Bomb className="w-4 h-4" />
+                      Launch Nuke
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Nuke Grid */}
+              <Card>
+                <CardContent className="p-4">
+                  {content.length === 0 ? (
+                    <div className="h-64 flex flex-col items-center justify-center text-muted-foreground">
+                      <Bomb className="w-10 h-10 mb-3 opacity-30" />
+                      <p className="text-sm">Ready to launch</p>
+                      <p className="text-xs">Generate 100+ pieces in seconds</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 lg:grid-cols-16 gap-1 max-h-80 overflow-y-auto">
+                        {content.slice(0, 160).map((item) => (
+                          <div
+                            key={item.id}
+                            className="aspect-square rounded bg-muted overflow-hidden"
+                          >
+                            {item.url ? (
+                              <img 
+                                src={item.url} 
+                                alt="" 
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                {item.type === 'video' ? (
+                                  <Video className="w-2.5 h-2.5 text-blue-400" />
+                                ) : (
+                                  <ImageIcon className="w-2.5 h-2.5 text-muted-foreground" />
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        {content.length > 160 && (
+                          <div className="aspect-square rounded bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground">
+                            +{content.length - 160}
+                          </div>
+                        )}
+                      </div>
+                      <Separator className="my-4" />
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm text-muted-foreground">
+                          {content.length} pieces generated
+                        </div>
+                        <Button className="gap-2">
+                          <Send className="w-4 h-4" />
+                          Deploy All
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </main>
       </div>
     </div>
   )
@@ -540,7 +672,7 @@ export default function DashboardPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-5 h-5 animate-spin text-zinc-400" />
+        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
       </div>
     }>
       <DashboardContent />
