@@ -286,8 +286,8 @@ export async function POST(request: Request) {
 export async function GET() {
   return NextResponse.json({
     models: Object.entries(MODELS).map(([key, value]) => ({
-      id: key,
-      ...value
+      ...value,
+      modelId: key,
     })),
     hasApiKey: !!FAL_KEY,
     apiKeyPrefix: FAL_KEY ? FAL_KEY.substring(0, 8) + '...' : null
