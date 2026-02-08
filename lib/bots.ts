@@ -53,8 +53,8 @@ export interface Market {
   shortName: string
   currentPrice: number // 0-1 (probability)
   volume: number
-  category: 'game' | 'player' | 'prop'
-  url?: string // Link to Polymarket
+  category: 'game' | 'player' | 'prop' | 'halftime'
+  url: string
 }
 
 // ==========================================
@@ -95,38 +95,169 @@ export const BOTS: BotProfile[] = [
 ]
 
 // ==========================================
-// Markets (Simulated)
+// Real Super Bowl LX Markets (Seahawks vs Patriots)
 // ==========================================
 
-// Real Super Bowl LIX Markets (Chiefs vs Eagles) with Polymarket links
 export const MARKETS: Market[] = [
-  // Game Outcome
-  { id: 'chiefs-win', name: 'Chiefs to Win Super Bowl LIX', shortName: 'KC Win', currentPrice: 0.52, volume: 12500000, category: 'game', url: 'https://polymarket.com/event/super-bowl-lix' },
-  { id: 'eagles-win', name: 'Eagles to Win Super Bowl LIX', shortName: 'PHI Win', currentPrice: 0.48, volume: 11800000, category: 'game', url: 'https://polymarket.com/event/super-bowl-lix' },
-  
-  // Totals
-  { id: 'over-49', name: 'Over 49.5 Total Points', shortName: 'Over 49.5', currentPrice: 0.51, volume: 4500000, category: 'game', url: 'https://polymarket.com/event/super-bowl-lix-total' },
-  { id: 'under-49', name: 'Under 49.5 Total Points', shortName: 'Under 49.5', currentPrice: 0.49, volume: 4200000, category: 'game', url: 'https://polymarket.com/event/super-bowl-lix-total' },
-  
-  // MVP
-  { id: 'mahomes-mvp', name: 'Patrick Mahomes Super Bowl MVP', shortName: 'Mahomes MVP', currentPrice: 0.35, volume: 2800000, category: 'player', url: 'https://polymarket.com/event/super-bowl-mvp' },
-  { id: 'hurts-mvp', name: 'Jalen Hurts Super Bowl MVP', shortName: 'Hurts MVP', currentPrice: 0.28, volume: 2400000, category: 'player', url: 'https://polymarket.com/event/super-bowl-mvp' },
-  { id: 'kelce-mvp', name: 'Travis Kelce Super Bowl MVP', shortName: 'Kelce MVP', currentPrice: 0.12, volume: 1900000, category: 'player', url: 'https://polymarket.com/event/super-bowl-mvp' },
-  
-  // Player Props
-  { id: 'mahomes-3td', name: 'Mahomes 3+ Passing TDs', shortName: 'Mahomes 3+ TD', currentPrice: 0.42, volume: 3200000, category: 'player', url: 'https://polymarket.com/event/super-bowl-props' },
-  { id: 'hurts-rush-td', name: 'Jalen Hurts Rushing TD', shortName: 'Hurts Rush TD', currentPrice: 0.58, volume: 2800000, category: 'player', url: 'https://polymarket.com/event/super-bowl-props' },
-  { id: 'kelce-100', name: 'Travis Kelce 100+ Receiving Yards', shortName: 'Kelce 100+', currentPrice: 0.38, volume: 1900000, category: 'player', url: 'https://polymarket.com/event/super-bowl-props' },
-  { id: 'aj-brown-td', name: 'A.J. Brown Receiving TD', shortName: 'AJ Brown TD', currentPrice: 0.62, volume: 1500000, category: 'player', url: 'https://polymarket.com/event/super-bowl-props' },
-  
-  // Game Props
-  { id: 'first-score-td', name: 'First Score is Touchdown', shortName: '1st Score TD', currentPrice: 0.68, volume: 950000, category: 'prop', url: 'https://polymarket.com/event/super-bowl-first-score' },
-  { id: 'safety', name: 'Safety Scored in Game', shortName: 'Safety', currentPrice: 0.08, volume: 850000, category: 'prop', url: 'https://polymarket.com/event/super-bowl-props' },
-  { id: 'ot', name: 'Game Goes to Overtime', shortName: 'Overtime', currentPrice: 0.07, volume: 950000, category: 'prop', url: 'https://polymarket.com/event/super-bowl-overtime' },
-  { id: 'lead-change-3', name: '3+ Lead Changes', shortName: '3+ Lead Changes', currentPrice: 0.72, volume: 650000, category: 'prop', url: 'https://polymarket.com/event/super-bowl-props' },
-  
-  // Halftime Show
-  { id: 'kendrick-surprise', name: 'Surprise Guest at Halftime', shortName: 'Halftime Guest', currentPrice: 0.82, volume: 1200000, category: 'prop', url: 'https://polymarket.com/event/super-bowl-halftime' },
+  // MVP Markets
+  { 
+    id: 'darnold-mvp', 
+    name: 'Sam Darnold Super Bowl MVP', 
+    shortName: 'Darnold MVP', 
+    currentPrice: 0.43, 
+    volume: 656843, 
+    category: 'player',
+    url: 'https://polymarket.com/event/super-bowl-lx-mvp'
+  },
+  { 
+    id: 'maye-mvp', 
+    name: 'Drake Maye Super Bowl MVP', 
+    shortName: 'Maye MVP', 
+    currentPrice: 0.26, 
+    volume: 607636, 
+    category: 'player',
+    url: 'https://polymarket.com/event/super-bowl-lx-mvp'
+  },
+  { 
+    id: 'jsn-mvp', 
+    name: 'Jaxon Smith-Njigba MVP', 
+    shortName: 'JSN MVP', 
+    currentPrice: 0.16, 
+    volume: 515651, 
+    category: 'player',
+    url: 'https://polymarket.com/event/super-bowl-lx-mvp'
+  },
+  { 
+    id: 'walker-mvp', 
+    name: 'Kenneth Walker III MVP', 
+    shortName: 'Walker MVP', 
+    currentPrice: 0.09, 
+    volume: 452122, 
+    category: 'player',
+    url: 'https://polymarket.com/event/super-bowl-lx-mvp'
+  },
+  { 
+    id: 'stevenson-mvp', 
+    name: 'Rhamondre Stevenson MVP', 
+    shortName: 'Stevenson MVP', 
+    currentPrice: 0.02, 
+    volume: 311757, 
+    category: 'player',
+    url: 'https://polymarket.com/event/super-bowl-lx-mvp'
+  },
+
+  // Halftime Show - Bad Bunny First Song
+  { 
+    id: 'titi-first', 
+    name: 'Tití Me Preguntó First Song', 
+    shortName: 'Tití First', 
+    currentPrice: 0.74, 
+    volume: 848600, 
+    category: 'halftime',
+    url: 'https://polymarket.com/event/first-song-at-super-bowl-lx-halftime-show'
+  },
+  { 
+    id: 'monaco-first', 
+    name: 'MONACO First Song', 
+    shortName: 'MONACO First', 
+    currentPrice: 0.11, 
+    volume: 102723, 
+    category: 'halftime',
+    url: 'https://polymarket.com/event/first-song-at-super-bowl-lx-halftime-show'
+  },
+  { 
+    id: 'mudanza-first', 
+    name: 'LA MUDANZA First Song', 
+    shortName: 'MUDANZA First', 
+    currentPrice: 0.07, 
+    volume: 258138, 
+    category: 'halftime',
+    url: 'https://polymarket.com/event/first-song-at-super-bowl-lx-halftime-show'
+  },
+
+  // Coin Toss
+  { 
+    id: 'coin-heads', 
+    name: 'Coin Toss Heads', 
+    shortName: 'Heads', 
+    currentPrice: 0.50, 
+    volume: 500000, 
+    category: 'prop',
+    url: 'https://polymarket.com/event/super-bowl-lx-coin-toss'
+  },
+  { 
+    id: 'coin-tails', 
+    name: 'Coin Toss Tails', 
+    shortName: 'Tails', 
+    currentPrice: 0.50, 
+    volume: 500000, 
+    category: 'prop',
+    url: 'https://polymarket.com/event/super-bowl-lx-coin-toss'
+  },
+
+  // Overtime
+  { 
+    id: 'overtime-yes', 
+    name: 'Game Goes to Overtime', 
+    shortName: 'Overtime Yes', 
+    currentPrice: 0.07, 
+    volume: 320000, 
+    category: 'game',
+    url: 'https://polymarket.com/event/super-bowl-lx-overtime'
+  },
+
+  // Bad Bunny Special
+  { 
+    id: 'badbunny-ice', 
+    name: 'Bad Bunny says "F*ck ICE"', 
+    shortName: 'BB F-ICE', 
+    currentPrice: 0.08, 
+    volume: 113948, 
+    category: 'halftime',
+    url: 'https://polymarket.com/event/will-bad-bunny-say-fuck-ice-at-the-super-bowl'
+  },
+
+  // Octopus (TD + 2pt by same player)
+  { 
+    id: 'octopus-yes', 
+    name: 'Octopus Scored (TD + 2pt same player)', 
+    shortName: 'Octopus', 
+    currentPrice: 0.05, 
+    volume: 180000, 
+    category: 'prop',
+    url: 'https://polymarket.com/event/pro-football-championship-octopus'
+  },
+
+  // National Anthem
+  { 
+    id: 'anthem-under-2', 
+    name: 'National Anthem Under 2:00', 
+    shortName: 'Anthem <2:00', 
+    currentPrice: 0.35, 
+    volume: 250000, 
+    category: 'prop',
+    url: 'https://polymarket.com/event/super-bowl-lx-national-anthem-time'
+  },
+  { 
+    id: 'anthem-over-2', 
+    name: 'National Anthem Over 2:00', 
+    shortName: 'Anthem >2:00', 
+    currentPrice: 0.65, 
+    volume: 250000, 
+    category: 'prop',
+    url: 'https://polymarket.com/event/super-bowl-lx-national-anthem-time'
+  },
+
+  // Player Cry
+  { 
+    id: 'player-cry', 
+    name: 'Player Cries During Anthem', 
+    shortName: 'Player Cry', 
+    currentPrice: 0.12, 
+    volume: 95000, 
+    category: 'prop',
+    url: 'https://polymarket.com/event/pro-football-championship-player-to-cry-during-national-anthem'
+  },
 ]
 
 // ==========================================
@@ -166,18 +297,20 @@ function selectMarketForEvent(event: GameEvent, bot: BotProfile): Market | null 
   
   // Map events to relevant markets
   const eventMarketMap: Record<EventType, string[]> = {
-    TOUCHDOWN: team === 'KC' ? ['chiefs-win', 'mahomes-3td', 'over-48'] : ['eagles-win', 'hurts-rush-td', 'over-48'],
-    FIELD_GOAL: ['under-48', team === 'KC' ? 'chiefs-win' : 'eagles-win'],
-    INTERCEPTION: team === 'KC' ? ['chiefs-win'] : ['eagles-win'],
-    FUMBLE: team === 'KC' ? ['chiefs-win'] : ['eagles-win'],
-    SAFETY: ['safety', team === 'KC' ? 'chiefs-win' : 'eagles-win'],
-    SACK: team === 'KC' ? ['chiefs-win'] : ['eagles-win'],
-    BIG_PLAY: team === 'KC' ? ['chiefs-win', 'kelce-100'] : ['eagles-win', 'over-48'],
+    TOUCHDOWN: team === 'SEA' 
+      ? ['darnold-mvp', 'jsn-mvp', 'walker-mvp', 'overtime-yes'] 
+      : ['maye-mvp', 'stevenson-mvp', 'overtime-yes'],
+    FIELD_GOAL: ['overtime-yes'],
+    INTERCEPTION: team === 'SEA' ? ['darnold-mvp'] : ['maye-mvp'],
+    FUMBLE: team === 'SEA' ? ['darnold-mvp'] : ['maye-mvp'],
+    SAFETY: ['octopus-yes'],
+    SACK: team === 'SEA' ? ['darnold-mvp'] : ['maye-mvp'],
+    BIG_PLAY: team === 'SEA' ? ['jsn-mvp', 'walker-mvp'] : ['stevenson-mvp'],
     PUNT: [],
-    KICKOFF: [],
-    TWO_POINT_CONVERSION: ['over-48'],
-    HALFTIME: [],
-    GAME_START: ['chiefs-win', 'eagles-win', 'over-48', 'mahomes-3td'],
+    KICKOFF: ['coin-heads', 'coin-tails'],
+    TWO_POINT_CONVERSION: ['octopus-yes'],
+    HALFTIME: ['titi-first', 'monaco-first', 'badbunny-ice'],
+    GAME_START: ['darnold-mvp', 'maye-mvp', 'coin-heads', 'anthem-over-2'],
     GAME_END: [],
     PLAY: [],
   }
@@ -438,9 +571,9 @@ export function resolvePendingTrades(): void {
 export function seedDemoTrades(): Trade[] {
   const demoEvents: Partial<GameEvent>[] = [
     { type: 'GAME_START', description: 'Game has started', team: 'NFL' },
-    { type: 'FIELD_GOAL', description: 'Eagles FG', team: 'PHI' },
-    { type: 'TOUCHDOWN', description: 'Chiefs TD', team: 'KC' },
-    { type: 'BIG_PLAY', description: '35 yard pass', team: 'KC' },
+    { type: 'FIELD_GOAL', description: 'Patriots FG', team: 'NE' },
+    { type: 'TOUCHDOWN', description: 'Seahawks TD', team: 'SEA' },
+    { type: 'BIG_PLAY', description: '35 yard pass', team: 'SEA' },
   ]
   
   const trades: Trade[] = []
