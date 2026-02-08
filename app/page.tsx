@@ -21,12 +21,6 @@ export default function LandingPage() {
               How it works
             </Link>
             <Link 
-              href="/sms" 
-              className="text-sm text-zinc-400 hover:text-white transition-colors"
-            >
-              SMS Lab
-            </Link>
-            <Link 
               href="/dashboard" 
               className="text-sm bg-white text-zinc-900 px-4 py-2 rounded-lg font-medium hover:bg-zinc-100 transition-colors"
             >
