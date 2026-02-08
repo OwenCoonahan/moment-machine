@@ -37,6 +37,15 @@ import { TradeFeed } from '@/components/trade-feed'
 // Posting modal
 import { PostModal } from '@/components/post-modal'
 
+// Event Triggers
+import { EventTriggers, EventPlayback } from '@/components/event-triggers'
+import { 
+  CustomGameEvent, 
+  getCustomEvents, 
+  toGameEvent, 
+  getEventEmoji 
+} from '@/lib/event-triggers'
+
 interface ContentItem {
   id: string
   type: 'image' | 'video' | 'text'
@@ -162,6 +171,12 @@ function DashboardContent() {
   // Posting modal state
   const [showPostModal, setShowPostModal] = useState(false)
   const [contentToPost, setContentToPost] = useState<ContentItem | null>(null)
+  
+  // Custom events state
+  const [customEvents, setCustomEvents] = useState<CustomGameEvent[]>([])
+  const [customEventIndex, setCustomEventIndex] = useState(0)
+  const [isEventPlaying, setIsEventPlaying] = useState(false)
+  const [currentEventId, setCurrentEventId] = useState<string | null>(null)
 
   // Load campaigns and avatars
   useEffect(() => {
@@ -179,7 +194,37 @@ function DashboardContent() {
         loaded: true
       })
     }
+    
+    // Load custom events
+    setCustomEvents(getCustomEvents())
   }, [])
+  
+  // Auto-advance event playback
+  useEffect(() => {
+    if (!isEventPlaying || customEvents.length === 0) return
+    
+    const timer = setInterval(() => {
+      setCustomEventIndex(prev => {
+        const next = prev + 1
+        if (next >= customEvents.length) {
+          setIsEventPlaying(false)
+          return prev
+        }
+        // Trigger the event
+        const event = customEvents[next]
+        setCurrentEvent({
+          type: event.type,
+          description: event.description,
+          team: event.team,
+          timestamp: new Date()
+        })
+        setCurrentEventId(event.id)
+        return next
+      })
+    }, 5000) // 5 seconds per event in playback mode
+    
+    return () => clearInterval(timer)
+  }, [isEventPlaying, customEvents])
   
   // Update campaign avatars when active campaign changes
   useEffect(() => {
@@ -316,6 +361,35 @@ function DashboardContent() {
   const handlePostContent = (item: ContentItem) => {
     setContentToPost(item)
     setShowPostModal(true)
+  }
+  
+  const handleCustomEventSelect = (event: { type: string; description: string; timestamp: Date; team?: string }) => {
+    setCurrentEvent({
+      type: event.type,
+      description: event.description,
+      team: event.team,
+      timestamp: event.timestamp
+    })
+    // Find the event ID if it's a custom event
+    const customEvent = customEvents.find(e => e.description === event.description)
+    if (customEvent) {
+      setCurrentEventId(customEvent.id)
+      setCustomEventIndex(customEvents.indexOf(customEvent))
+    }
+  }
+  
+  const handleCustomEventPlaybackSelect = (event: CustomGameEvent) => {
+    setCurrentEvent({
+      type: event.type,
+      description: event.description,
+      team: event.team,
+      timestamp: new Date()
+    })
+    setCurrentEventId(event.id)
+  }
+  
+  const refreshCustomEvents = () => {
+    setCustomEvents(getCustomEvents())
   }
 
   // Studio mode - high quality generation
@@ -675,13 +749,33 @@ function DashboardContent() {
 
           <Separator />
 
-          {/* Demo Event Triggers - Only show for demo campaigns */}
-          {activeCampaign?.gameId === 'demo' && (
+          {/* Event Triggers Section */}
+          {activeCampaign && (
             <>
+              <EventTriggers
+                onEventSelect={handleCustomEventSelect}
+                currentEventId={currentEventId || undefined}
+              />
+              
+              {/* Event Playback - show when custom events are loaded */}
+              {customEvents.length > 0 && (
+                <EventPlayback
+                  events={customEvents}
+                  currentIndex={customEventIndex}
+                  onIndexChange={setCustomEventIndex}
+                  onEventSelect={handleCustomEventPlaybackSelect}
+                  isPlaying={isEventPlaying}
+                  onPlayToggle={() => setIsEventPlaying(!isEventPlaying)}
+                />
+              )}
+              
+              <Separator />
+              
+              {/* Quick Demo Events - Always available */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   <Zap className="w-3.5 h-3.5" />
-                  Demo Events
+                  Quick Events
                 </div>
                 <div className="space-y-1">
                   {[
