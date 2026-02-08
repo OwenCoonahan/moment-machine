@@ -54,6 +54,7 @@ export interface Market {
   currentPrice: number // 0-1 (probability)
   volume: number
   category: 'game' | 'player' | 'prop'
+  url?: string // Link to Polymarket
 }
 
 // ==========================================
@@ -97,35 +98,35 @@ export const BOTS: BotProfile[] = [
 // Markets (Simulated)
 // ==========================================
 
-// Real Super Bowl LIX Markets (Chiefs vs Eagles)
+// Real Super Bowl LIX Markets (Chiefs vs Eagles) with Polymarket links
 export const MARKETS: Market[] = [
   // Game Outcome
-  { id: 'chiefs-win', name: 'Chiefs to Win Super Bowl LIX', shortName: 'KC Win', currentPrice: 0.52, volume: 12500000, category: 'game' },
-  { id: 'eagles-win', name: 'Eagles to Win Super Bowl LIX', shortName: 'PHI Win', currentPrice: 0.48, volume: 11800000, category: 'game' },
+  { id: 'chiefs-win', name: 'Chiefs to Win Super Bowl LIX', shortName: 'KC Win', currentPrice: 0.52, volume: 12500000, category: 'game', url: 'https://polymarket.com/event/super-bowl-lix' },
+  { id: 'eagles-win', name: 'Eagles to Win Super Bowl LIX', shortName: 'PHI Win', currentPrice: 0.48, volume: 11800000, category: 'game', url: 'https://polymarket.com/event/super-bowl-lix' },
   
   // Totals
-  { id: 'over-49', name: 'Over 49.5 Total Points', shortName: 'Over 49.5', currentPrice: 0.51, volume: 4500000, category: 'game' },
-  { id: 'under-49', name: 'Under 49.5 Total Points', shortName: 'Under 49.5', currentPrice: 0.49, volume: 4200000, category: 'game' },
+  { id: 'over-49', name: 'Over 49.5 Total Points', shortName: 'Over 49.5', currentPrice: 0.51, volume: 4500000, category: 'game', url: 'https://polymarket.com/event/super-bowl-lix-total' },
+  { id: 'under-49', name: 'Under 49.5 Total Points', shortName: 'Under 49.5', currentPrice: 0.49, volume: 4200000, category: 'game', url: 'https://polymarket.com/event/super-bowl-lix-total' },
   
   // MVP
-  { id: 'mahomes-mvp', name: 'Patrick Mahomes Super Bowl MVP', shortName: 'Mahomes MVP', currentPrice: 0.35, volume: 2800000, category: 'player' },
-  { id: 'hurts-mvp', name: 'Jalen Hurts Super Bowl MVP', shortName: 'Hurts MVP', currentPrice: 0.28, volume: 2400000, category: 'player' },
-  { id: 'kelce-mvp', name: 'Travis Kelce Super Bowl MVP', shortName: 'Kelce MVP', currentPrice: 0.12, volume: 1900000, category: 'player' },
+  { id: 'mahomes-mvp', name: 'Patrick Mahomes Super Bowl MVP', shortName: 'Mahomes MVP', currentPrice: 0.35, volume: 2800000, category: 'player', url: 'https://polymarket.com/event/super-bowl-mvp' },
+  { id: 'hurts-mvp', name: 'Jalen Hurts Super Bowl MVP', shortName: 'Hurts MVP', currentPrice: 0.28, volume: 2400000, category: 'player', url: 'https://polymarket.com/event/super-bowl-mvp' },
+  { id: 'kelce-mvp', name: 'Travis Kelce Super Bowl MVP', shortName: 'Kelce MVP', currentPrice: 0.12, volume: 1900000, category: 'player', url: 'https://polymarket.com/event/super-bowl-mvp' },
   
   // Player Props
-  { id: 'mahomes-3td', name: 'Mahomes 3+ Passing TDs', shortName: 'Mahomes 3+ TD', currentPrice: 0.42, volume: 3200000, category: 'player' },
-  { id: 'hurts-rush-td', name: 'Jalen Hurts Rushing TD', shortName: 'Hurts Rush TD', currentPrice: 0.58, volume: 2800000, category: 'player' },
-  { id: 'kelce-100', name: 'Travis Kelce 100+ Receiving Yards', shortName: 'Kelce 100+', currentPrice: 0.38, volume: 1900000, category: 'player' },
-  { id: 'aj-brown-td', name: 'A.J. Brown Receiving TD', shortName: 'AJ Brown TD', currentPrice: 0.62, volume: 1500000, category: 'player' },
+  { id: 'mahomes-3td', name: 'Mahomes 3+ Passing TDs', shortName: 'Mahomes 3+ TD', currentPrice: 0.42, volume: 3200000, category: 'player', url: 'https://polymarket.com/event/super-bowl-props' },
+  { id: 'hurts-rush-td', name: 'Jalen Hurts Rushing TD', shortName: 'Hurts Rush TD', currentPrice: 0.58, volume: 2800000, category: 'player', url: 'https://polymarket.com/event/super-bowl-props' },
+  { id: 'kelce-100', name: 'Travis Kelce 100+ Receiving Yards', shortName: 'Kelce 100+', currentPrice: 0.38, volume: 1900000, category: 'player', url: 'https://polymarket.com/event/super-bowl-props' },
+  { id: 'aj-brown-td', name: 'A.J. Brown Receiving TD', shortName: 'AJ Brown TD', currentPrice: 0.62, volume: 1500000, category: 'player', url: 'https://polymarket.com/event/super-bowl-props' },
   
   // Game Props
-  { id: 'first-score-td', name: 'First Score is Touchdown', shortName: '1st Score TD', currentPrice: 0.68, volume: 950000, category: 'prop' },
-  { id: 'safety', name: 'Safety Scored in Game', shortName: 'Safety', currentPrice: 0.08, volume: 850000, category: 'prop' },
-  { id: 'ot', name: 'Game Goes to Overtime', shortName: 'Overtime', currentPrice: 0.07, volume: 950000, category: 'prop' },
-  { id: 'lead-change-3', name: '3+ Lead Changes', shortName: '3+ Lead Changes', currentPrice: 0.72, volume: 650000, category: 'prop' },
+  { id: 'first-score-td', name: 'First Score is Touchdown', shortName: '1st Score TD', currentPrice: 0.68, volume: 950000, category: 'prop', url: 'https://polymarket.com/event/super-bowl-first-score' },
+  { id: 'safety', name: 'Safety Scored in Game', shortName: 'Safety', currentPrice: 0.08, volume: 850000, category: 'prop', url: 'https://polymarket.com/event/super-bowl-props' },
+  { id: 'ot', name: 'Game Goes to Overtime', shortName: 'Overtime', currentPrice: 0.07, volume: 950000, category: 'prop', url: 'https://polymarket.com/event/super-bowl-overtime' },
+  { id: 'lead-change-3', name: '3+ Lead Changes', shortName: '3+ Lead Changes', currentPrice: 0.72, volume: 650000, category: 'prop', url: 'https://polymarket.com/event/super-bowl-props' },
   
   // Halftime Show
-  { id: 'kendrick-surprise', name: 'Surprise Guest at Halftime', shortName: 'Halftime Guest', currentPrice: 0.82, volume: 1200000, category: 'prop' },
+  { id: 'kendrick-surprise', name: 'Surprise Guest at Halftime', shortName: 'Halftime Guest', currentPrice: 0.82, volume: 1200000, category: 'prop', url: 'https://polymarket.com/event/super-bowl-halftime' },
 ]
 
 // ==========================================

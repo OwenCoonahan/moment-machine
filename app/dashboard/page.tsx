@@ -1133,18 +1133,24 @@ function DashboardContent() {
                           Super Bowl LIX Markets
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="space-y-2">
+                      <CardContent className="space-y-2 max-h-96 overflow-y-auto">
                         {MARKETS.map(market => (
-                          <div key={market.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                          <a 
+                            key={market.id} 
+                            href={market.url || 'https://polymarket.com'} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted hover:ring-1 hover:ring-primary/20 transition-all cursor-pointer block"
+                          >
                             <div className="flex-1">
-                              <p className="text-sm font-medium">{market.name}</p>
-                              <p className="text-xs text-muted-foreground">Vol: ${(market.volume / 1000000).toFixed(1)}M</p>
+                              <p className="text-sm font-medium hover:text-primary transition-colors">{market.name}</p>
+                              <p className="text-xs text-muted-foreground">Vol: ${(market.volume / 1000000).toFixed(1)}M • <span className="text-primary/60">Polymarket ↗</span></p>
                             </div>
                             <div className="text-right">
                               <p className="text-lg font-bold font-mono">{(market.currentPrice * 100).toFixed(0)}¢</p>
                               <p className="text-xs text-muted-foreground">{(market.currentPrice * 100).toFixed(0)}% odds</p>
                             </div>
-                          </div>
+                          </a>
                         ))}
                       </CardContent>
                     </Card>
@@ -1162,42 +1168,63 @@ function DashboardContent() {
 
                   {/* Right: PizzaShack Stats */}
                   <div className="space-y-4">
-                    {/* Activity Stats */}
+                    {/* Engagement Stats */}
                     <Card>
                       <CardHeader className="pb-3">
                         <CardTitle className="text-sm font-medium flex items-center gap-2">
-                          🍕 PizzaShack Bot Stats
+                          🍕 PizzaShack Engagement
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
+                        {/* Main engagement metrics */}
                         <div className="grid grid-cols-2 gap-3">
                           <div className="text-center p-3 rounded-lg bg-muted/50">
+                            <p className="text-2xl font-bold font-mono">847</p>
+                            <p className="text-xs text-muted-foreground">Total Posts</p>
+                          </div>
+                          <div className="text-center p-3 rounded-lg bg-muted/50">
+                            <p className="text-2xl font-bold font-mono">2.3K</p>
+                            <p className="text-xs text-muted-foreground">Comments Made</p>
+                          </div>
+                          <div className="text-center p-3 rounded-lg bg-muted/50">
                             <p className="text-2xl font-bold font-mono">64</p>
-                            <p className="text-xs text-muted-foreground">Total Trades</p>
+                            <p className="text-xs text-muted-foreground">Trades</p>
                           </div>
                           <div className="text-center p-3 rounded-lg bg-muted/50">
-                            <p className="text-2xl font-bold font-mono">142</p>
-                            <p className="text-xs text-muted-foreground">Comments</p>
-                          </div>
-                          <div className="text-center p-3 rounded-lg bg-muted/50">
-                            <p className="text-2xl font-bold font-mono">12.4K</p>
+                            <p className="text-2xl font-bold font-mono">89.2K</p>
                             <p className="text-xs text-muted-foreground">Impressions</p>
-                          </div>
-                          <div className="text-center p-3 rounded-lg bg-muted/50">
-                            <p className="text-2xl font-bold font-mono text-emerald-600">+$9.6K</p>
-                            <p className="text-xs text-muted-foreground">Total P&L</p>
                           </div>
                         </div>
                         
-                        {/* Simple Activity Chart */}
+                        {/* Engagement breakdown */}
+                        <div className="space-y-2 pt-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Likes received</span>
+                            <span className="font-mono">4,231</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Replies received</span>
+                            <span className="font-mono">892</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Mentions</span>
+                            <span className="font-mono">156</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Engagement rate</span>
+                            <span className="font-mono text-emerald-600">8.4%</span>
+                          </div>
+                        </div>
+                        
+                        {/* Activity Chart */}
                         <div className="pt-2">
-                          <p className="text-xs text-muted-foreground mb-2">Activity (last 8 events)</p>
+                          <p className="text-xs text-muted-foreground mb-2">Posts over time</p>
                           <div className="flex items-end gap-1 h-16">
-                            {[3, 5, 2, 8, 4, 6, 9, 7].map((val, i) => (
+                            {[12, 18, 8, 24, 15, 28, 35, 22].map((val, i) => (
                               <div
                                 key={i}
                                 className="flex-1 bg-primary/20 hover:bg-primary/40 transition-colors rounded-t"
-                                style={{ height: `${val * 10}%` }}
+                                style={{ height: `${(val / 35) * 100}%` }}
                               />
                             ))}
                           </div>
