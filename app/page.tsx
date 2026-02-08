@@ -14,7 +14,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center">
-              <Zap className="w-5 h-5 text-dark-900" />
+              <Zap className="w-5 h-5 text-white" />
             </div>
             <span className="font-semibold text-lg">Moment Machine</span>
           </div>
@@ -24,7 +24,7 @@ export default function LandingPage() {
             </Link>
             <Link 
               href="/dashboard" 
-              className="bg-accent hover:bg-accent-dim text-dark-900 px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+              className="bg-accent hover:bg-accent-dim text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
             >
               Get Started
             </Link>
@@ -40,10 +40,10 @@ export default function LandingPage() {
             <span className="text-sm text-zinc-400">Live during Super Bowl LX</span>
           </div>
           
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight tracking-tight">
             <span className="text-white">1,000 content pieces.</span>
             <br />
-            <span className="text-accent">30 seconds.</span>
+            <span className="bg-gradient-to-r from-accent to-accent-light bg-clip-text text-transparent">30 seconds.</span>
           </h1>
           
           <p className="text-xl text-zinc-400 mb-12 max-w-2xl mx-auto">
@@ -63,7 +63,7 @@ export default function LandingPage() {
               />
               <Link 
                 href={`/dashboard?url=${encodeURIComponent(url)}`}
-                className="bg-accent hover:bg-accent-dim text-dark-900 px-6 py-4 rounded-xl font-semibold flex items-center gap-2 transition-colors"
+                className="bg-accent hover:bg-accent-dim text-white px-6 py-4 rounded-xl font-semibold flex items-center gap-2 transition-colors"
               >
                 Launch
                 <ArrowRight className="w-5 h-5" />
@@ -212,7 +212,7 @@ export default function LandingPage() {
           </p>
           <Link 
             href="/dashboard" 
-            className="inline-flex items-center gap-2 bg-accent hover:bg-accent-dim text-dark-900 px-8 py-4 rounded-xl font-semibold text-lg transition-colors"
+            className="inline-flex items-center gap-2 bg-accent hover:bg-accent-dim text-white px-8 py-4 rounded-xl font-semibold text-lg transition-colors"
           >
             Launch Moment Machine
             <ArrowRight className="w-5 h-5" />
@@ -225,7 +225,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 bg-accent rounded-md flex items-center justify-center">
-              <Zap className="w-4 h-4 text-dark-900" />
+              <Zap className="w-4 h-4 text-white" />
             </div>
             <span className="font-medium">Moment Machine</span>
           </div>

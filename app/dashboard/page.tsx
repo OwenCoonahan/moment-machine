@@ -224,7 +224,7 @@ function DashboardContent() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 bg-accent rounded-xl flex items-center justify-center">
-                <Zap className="w-6 h-6 text-dark-900" />
+                <Zap className="w-6 h-6 text-white" />
               </div>
               <div>
                 <h1 className="font-semibold text-lg">Moment Machine</h1>
@@ -273,7 +273,7 @@ function DashboardContent() {
                     />
                     <button
                       onClick={handleExtractBrand}
-                      className="bg-accent hover:bg-accent-dim text-dark-900 px-4 py-3 rounded-lg transition-colors font-medium"
+                      className="bg-accent hover:bg-accent-dim text-white px-4 py-3 rounded-lg transition-colors font-medium"
                     >
                       <RefreshCw className="w-4 h-4" />
                     </button>
@@ -326,7 +326,7 @@ function DashboardContent() {
                     onClick={() => setIsArmed(!isArmed)}
                     className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
                       isArmed 
-                        ? 'bg-accent text-dark-900 glow-green' 
+                        ? 'bg-accent text-white glow-accent' 
                         : 'bg-dark-600 hover:bg-dark-500'
                     }`}
                   >
@@ -338,7 +338,7 @@ function DashboardContent() {
                 <button
                   onClick={triggerGeneration}
                   disabled={!brand.loaded || isGenerating}
-                  className="w-full bg-accent hover:bg-accent-dim disabled:opacity-50 disabled:cursor-not-allowed text-dark-900 px-4 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
+                  className="w-full bg-accent hover:bg-accent-dim disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
                 >
                   {isGenerating ? (
                     <>
@@ -394,7 +394,7 @@ function DashboardContent() {
               
               <button 
                 disabled={totalGenerated === 0}
-                className="w-full mt-4 bg-accent hover:bg-accent-dim disabled:opacity-50 disabled:cursor-not-allowed text-dark-900 px-4 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
+                className="w-full mt-4 bg-accent hover:bg-accent-dim disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
               >
                 <Send className="w-4 h-4" />
                 Deploy All Content
@@ -546,7 +546,7 @@ function DashboardContent() {
                 <p className="text-sm text-accent">#SuperBowl #GameDay #{brand.name?.replace(/[^a-zA-Z]/g, '')}</p>
               </div>
             </div>
-            <button className="w-full mt-4 bg-accent hover:bg-accent-dim text-dark-900 px-4 py-3 rounded-lg font-semibold transition-colors">
+            <button className="w-full mt-4 bg-accent hover:bg-accent-dim text-white px-4 py-3 rounded-lg font-semibold transition-colors">
               Post Now
             </button>
           </div>
