@@ -21,7 +21,7 @@ import { Separator } from '@/components/ui/separator'
 // Campaign & Avatar imports
 import { 
   Campaign, getCampaigns, getActiveCampaign, setActiveCampaign as setActiveStoredCampaign,
-  getActiveCampaignId, incrementCampaignContentCount
+  getActiveCampaignId, incrementCampaignContentCount, GAME_EVENTS
 } from '@/lib/campaigns'
 import { Avatar, getAvatars, incrementAvatarContentCount, getAvatarPlaceholder } from '@/lib/avatars'
 import { CampaignList, CampaignCard, AddCampaignCard } from '@/components/campaign-card'
@@ -326,6 +326,28 @@ function DashboardContent() {
       industry: campaign.brandInfo.industry,
       loaded: true
     })
+    
+    // Load predefined game events if available
+    const gameId = campaign.gameId
+    if (gameId && GAME_EVENTS[gameId]) {
+      const events = GAME_EVENTS[gameId].map((e, i) => ({
+        id: `${gameId}-${i}`,
+        timestamp: e.timestamp,
+        type: e.type as any,
+        description: e.description,
+        team: e.team,
+      }))
+      setCustomEvents(events)
+      setCustomEventIndex(0)
+      if (events.length > 0) {
+        setCurrentEvent({
+          type: events[0].type,
+          description: events[0].description,
+          team: events[0].team,
+          timestamp: new Date()
+        })
+      }
+    }
   }
   
   const handleCampaignCreated = (campaign: Campaign) => {

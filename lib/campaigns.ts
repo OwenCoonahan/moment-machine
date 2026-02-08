@@ -184,9 +184,48 @@ export function setActiveCampaign(id: string | null): void {
 
 // Demo campaigns for quick start
 export const DEMO_GAMES = [
+  { id: 'sb58-replay', name: 'Super Bowl LVIII Replay', description: 'Chiefs vs 49ers - Full game events' },
   { id: 'demo', name: 'Super Bowl LX (Demo)', description: 'Simulated game events for testing' },
   { id: '401547602', name: 'Super Bowl LX (Live)', description: 'Real-time ESPN data' },
 ]
+
+// Super Bowl LVIII Real Events (Chiefs 25 - 49ers 22, OT)
+export const GAME_EVENTS: Record<string, Array<{
+  timestamp: string
+  type: string
+  team: string
+  description: string
+}>> = {
+  'sb58-replay': [
+    { timestamp: 'Q1 11:54', type: 'FIELD_GOAL', team: '49ers', description: 'Jake Moody 55-yard field goal - SF leads 3-0' },
+    { timestamp: 'Q1 5:14', type: 'TOUCHDOWN', team: 'Chiefs', description: 'Mahomes to Kelce 22-yard TD pass - KC leads 7-3' },
+    { timestamp: 'Q2 9:02', type: 'FIELD_GOAL', team: '49ers', description: 'Jake Moody 53-yard field goal - Tied 7-6' },
+    { timestamp: 'Q2 0:06', type: 'FIELD_GOAL', team: '49ers', description: 'Jake Moody 27-yard field goal - SF leads 10-7 at half' },
+    { timestamp: 'HALFTIME', type: 'HALFTIME', team: '', description: 'Usher halftime show performance' },
+    { timestamp: 'Q3 11:43', type: 'TOUCHDOWN', team: '49ers', description: 'CMC 21-yard rushing TD - SF leads 16-7' },
+    { timestamp: 'Q3 8:42', type: 'FIELD_GOAL', team: '49ers', description: 'Jake Moody 52-yard field goal - SF leads 19-7' },
+    { timestamp: 'Q4 13:23', type: 'FIELD_GOAL', team: 'Chiefs', description: 'Harrison Butker 28-yard field goal - SF leads 19-10' },
+    { timestamp: 'Q4 6:16', type: 'INTERCEPTION', team: 'Chiefs', description: 'Dre Greenlaw intercepts Mahomes - turnover' },
+    { timestamp: 'Q4 2:51', type: 'TOUCHDOWN', team: 'Chiefs', description: 'Mahomes to Hardman 11-yard TD - SF leads 19-16' },
+    { timestamp: 'Q4 1:53', type: 'FIELD_GOAL', team: '49ers', description: 'Jake Moody 24-yard field goal - SF leads 22-16' },
+    { timestamp: 'Q4 0:03', type: 'TOUCHDOWN', team: 'Chiefs', description: 'Mahomes to Hardman 5-yard TD - Tied 22-22, OVERTIME!' },
+    { timestamp: 'OT 11:40', type: 'INTERCEPTION', team: '49ers', description: 'Chiefs intercept Purdy - turnover in OT' },
+    { timestamp: 'OT 3:14', type: 'TOUCHDOWN', team: 'Chiefs', description: 'Mahomes to Hardman 3-yard TD - CHIEFS WIN 25-22!' },
+  ],
+  'demo': [
+    { timestamp: 'Q1 12:00', type: 'KICKOFF', team: '', description: 'Game begins - Super Bowl LX' },
+    { timestamp: 'Q1 8:34', type: 'TOUCHDOWN', team: 'Chiefs', description: 'Mahomes to Kelce 15-yard TD pass' },
+    { timestamp: 'Q1 3:21', type: 'FIELD_GOAL', team: 'Eagles', description: 'Elliott 47-yard field goal' },
+    { timestamp: 'Q2 10:15', type: 'INTERCEPTION', team: 'Eagles', description: 'Hurts pass intercepted by Bolton' },
+    { timestamp: 'Q2 5:44', type: 'TOUCHDOWN', team: 'Chiefs', description: 'Pacheco 8-yard rushing TD' },
+    { timestamp: 'HALFTIME', type: 'HALFTIME', team: '', description: 'Kendrick Lamar halftime show' },
+    { timestamp: 'Q3 9:22', type: 'FUMBLE', team: 'Chiefs', description: 'Ball recovered by Eagles at the 30' },
+    { timestamp: 'Q3 4:11', type: 'TOUCHDOWN', team: 'Eagles', description: 'Hurts to AJ Brown 35-yard TD' },
+    { timestamp: 'Q4 8:00', type: 'FIELD_GOAL', team: 'Chiefs', description: 'Butker 41-yard field goal' },
+    { timestamp: 'Q4 2:05', type: 'BIG_PLAY', team: 'Eagles', description: '45-yard completion to DeVonta Smith' },
+    { timestamp: 'Q4 0:34', type: 'TOUCHDOWN', team: 'Eagles', description: 'Hurts 2-yard QB sneak - GAME WINNER!' },
+  ]
+}
 
 // Create a demo campaign
 export function createDemoCampaign(brandName: string, brandColors: string[] = ['#18181b', '#f4f4f5']): Campaign {
