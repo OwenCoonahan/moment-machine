@@ -28,6 +28,7 @@ import { CampaignList, CampaignCard, AddCampaignCard } from '@/components/campai
 import { AvatarCard, AddAvatarCard } from '@/components/avatar-card'
 import { CampaignModal } from '@/components/campaign-modal'
 import { AvatarModal } from '@/components/avatar-modal'
+import OutreachPanel from '../sms/outreach-panel'
 
 // Bot/Markets imports
 import { BotProfile, BOTS, MARKETS, getBotsWithStats, getLeaderboard, simulateBotReactions, Trade, getRecentTrades, seedDemoTrades } from '@/lib/bots'
@@ -952,6 +953,10 @@ function DashboardContent() {
                     <TrendingUp className="w-3.5 h-3.5" />
                     Markets
                   </TabsTrigger>
+                  <TabsTrigger value="outreach" className="gap-1.5">
+                    <Send className="w-3.5 h-3.5" />
+                    Outreach
+                  </TabsTrigger>
                 </TabsList>
 
                 {/* Stats */}
@@ -1329,6 +1334,17 @@ function DashboardContent() {
                     </Card>
                   </div>
                 </div>
+              </TabsContent>
+
+              {/* Outreach Tab */}
+              <TabsContent value="outreach" className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold">Customer Outreach</h2>
+                    <p className="text-sm text-muted-foreground">SMS, MMS, and call workflows</p>
+                  </div>
+                </div>
+                <OutreachPanel />
               </TabsContent>
             </Tabs>
           )}
