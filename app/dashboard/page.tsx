@@ -34,6 +34,9 @@ import { BotProfile, BOTS, getBotsWithStats, getLeaderboard, simulateBotReaction
 import { BotCard } from '@/components/bot-card'
 import { TradeFeed } from '@/components/trade-feed'
 
+// Posting modal
+import { PostModal } from '@/components/post-modal'
+
 interface ContentItem {
   id: string
   type: 'image' | 'video' | 'text'
@@ -155,6 +158,10 @@ function DashboardContent() {
   
   // Sidebar view state
   const [sidebarView, setSidebarView] = useState<'campaigns' | 'settings'>('campaigns')
+  
+  // Posting modal state
+  const [showPostModal, setShowPostModal] = useState(false)
+  const [contentToPost, setContentToPost] = useState<ContentItem | null>(null)
 
   // Load campaigns and avatars
   useEffect(() => {
@@ -304,6 +311,11 @@ function DashboardContent() {
   const handleGenerateForAvatar = (avatar: Avatar) => {
     setSelectedAvatar(avatar)
     generateStudio(avatar)
+  }
+  
+  const handlePostContent = (item: ContentItem) => {
+    setContentToPost(item)
+    setShowPostModal(true)
   }
 
   // Studio mode - high quality generation
@@ -825,6 +837,15 @@ function DashboardContent() {
                             </div>
                           )}
                           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="secondary" 
+                              className="h-8"
+                              onClick={() => handlePostContent(item)}
+                            >
+                              <Send className="w-3.5 h-3.5 mr-1" />
+                              Post
+                            </Button>
                             <Button size="sm" variant="secondary" className="h-8">
                               <Clock className="w-3.5 h-3.5 mr-1" />
                               Schedule
@@ -1060,6 +1081,15 @@ function DashboardContent() {
         onClose={() => setShowAvatarModal(false)}
         onCreated={handleAvatarCreated}
         brandName={brand.name}
+      />
+      
+      <PostModal
+        isOpen={showPostModal}
+        onClose={() => {
+          setShowPostModal(false)
+          setContentToPost(null)
+        }}
+        content={contentToPost}
       />
     </div>
   )
