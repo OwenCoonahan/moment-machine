@@ -35,13 +35,13 @@ export default function LandingPage() {
           </p>
           
           <h1 className="text-4xl md:text-5xl font-semibold text-zinc-900 mb-6 leading-tight tracking-tight">
-            1,000 content pieces.
+            Your restaurant goes viral
             <br />
-            <span className="text-zinc-400">30 seconds.</span>
+            <span className="text-zinc-400">during the big game.</span>
           </h1>
           
           <p className="text-lg text-zinc-500 mb-12 max-w-lg mx-auto leading-relaxed">
-            AI watches live events and generates branded content for your business instantly.
+            AI watches the Super Bowl and generates branded content for your restaurant in real-time. Compete with Chipotle, Wingstop, and the big chains — without the $7M ad budget.
           </p>
 
           {/* URL Input */}
@@ -51,7 +51,7 @@ export default function LandingPage() {
                 type="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="yourbusiness.com"
+                placeholder="joespizza.com"
                 className="flex-1 bg-zinc-50 border border-zinc-200 rounded-lg px-4 py-3 text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all"
               />
               <Link 
@@ -62,6 +62,9 @@ export default function LandingPage() {
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
+            <p className="text-xs text-zinc-400 mt-3">
+              Works for: Local pizzerias • Wing shops • Taco joints • Sports bars • Any restaurant
+            </p>
           </div>
         </div>
       </section>
@@ -71,16 +74,16 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto px-6">
           <div className="grid grid-cols-3 gap-8 text-center">
             <div>
-              <div className="text-3xl font-semibold text-zinc-900 mb-1 counter">847,293</div>
-              <div className="text-sm text-zinc-500">Content generated</div>
+              <div className="text-3xl font-semibold text-zinc-900 mb-1 counter">1,247</div>
+              <div className="text-sm text-zinc-500">Local restaurants powered</div>
             </div>
             <div>
               <div className="text-3xl font-semibold text-zinc-900 mb-1 counter">&lt;45s</div>
-              <div className="text-sm text-zinc-500">Average latency</div>
+              <div className="text-sm text-zinc-500">From touchdown to post</div>
             </div>
             <div>
               <div className="text-3xl font-semibold text-zinc-900 mb-1">$7M → $49</div>
-              <div className="text-sm text-zinc-500">Your cost</div>
+              <div className="text-sm text-zinc-500">Super Bowl marketing, your budget</div>
             </div>
           </div>
         </div>
@@ -123,10 +126,10 @@ export default function LandingPage() {
       <section className="py-24 px-6">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="text-2xl font-semibold text-zinc-900 mb-4">
-            The Super Bowl is now.
+            The big chains have agencies. You have this.
           </h2>
           <p className="text-zinc-500 mb-8">
-            Your competitors are posting one thing. You could post 1,000.
+            While Domino's posts once, your local pizzeria could post 100 times — each one perfectly timed to the game.
           </p>
           <Link 
             href="/dashboard" 

@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Moment Machine — AI Content at the Speed of Live',
-  description: 'Generate thousands of branded content pieces in seconds. Turn live moments into marketing gold.',
+  title: 'Moment Machine — Cracked Marketing for Local Restaurants',
+  description: 'Your restaurant goes viral during the Super Bowl. AI generates branded content in real-time so local pizzerias and wing shops can compete with national chains.',
 }
 
 export default function RootLayout({

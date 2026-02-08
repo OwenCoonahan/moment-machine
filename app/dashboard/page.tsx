@@ -88,9 +88,27 @@ function extractBrandFromUrl(url: string): Brand {
     const brandName = domain.split('.')[0]
     
     const knownBrands: Record<string, Partial<Brand>> = {
+      // Major restaurant chains
       'chipotle': { name: 'Chipotle', colors: ['#441500', '#A81612', '#F5F0EB'], industry: 'Restaurant' },
       'dominos': { name: "Domino's", colors: ['#006491', '#E31837', '#FFFFFF'], industry: 'Restaurant' },
       'wingstop': { name: 'Wingstop', colors: ['#024731', '#FFD100', '#FFFFFF'], industry: 'Restaurant' },
+      'buffalowildwings': { name: 'Buffalo Wild Wings', colors: ['#FFB612', '#000000', '#FFFFFF'], industry: 'Restaurant' },
+      'bww': { name: 'Buffalo Wild Wings', colors: ['#FFB612', '#000000', '#FFFFFF'], industry: 'Restaurant' },
+      'papajohns': { name: "Papa John's", colors: ['#006341', '#ED1C24', '#FFFFFF'], industry: 'Restaurant' },
+      'pizzahut': { name: 'Pizza Hut', colors: ['#EE3A43', '#00A65E', '#FFFFFF'], industry: 'Restaurant' },
+      'wendys': { name: "Wendy's", colors: ['#E2203B', '#199FDA', '#FFFFFF'], industry: 'Restaurant' },
+      'tacobell': { name: 'Taco Bell', colors: ['#702082', '#FF5A00', '#FFFFFF'], industry: 'Restaurant' },
+      'mcdonalds': { name: "McDonald's", colors: ['#FFC72C', '#DA291C', '#FFFFFF'], industry: 'Restaurant' },
+      'burgerking': { name: 'Burger King', colors: ['#D62300', '#F5EBDC', '#0033A0'], industry: 'Restaurant' },
+      'popeyes': { name: 'Popeyes', colors: ['#F15A29', '#E35205', '#FFFFFF'], industry: 'Restaurant' },
+      'chilis': { name: "Chili's", colors: ['#00704A', '#E31837', '#FFFFFF'], industry: 'Restaurant' },
+      'applebees': { name: "Applebee's", colors: ['#C8102E', '#000000', '#FFFFFF'], industry: 'Restaurant' },
+      'hooters': { name: 'Hooters', colors: ['#F36C21', '#583224', '#FFFFFF'], industry: 'Restaurant' },
+      'bdubs': { name: 'Buffalo Wild Wings', colors: ['#FFB612', '#000000', '#FFFFFF'], industry: 'Restaurant' },
+      'jerseysmikes': { name: "Jersey Mike's", colors: ['#003B5C', '#CE1126', '#FFFFFF'], industry: 'Restaurant' },
+      'fiveguys': { name: 'Five Guys', colors: ['#C8102E', '#FFFFFF', '#000000'], industry: 'Restaurant' },
+      'shakeshack': { name: 'Shake Shack', colors: ['#1F3D0C', '#FFFFFF', '#000000'], industry: 'Restaurant' },
+      // Legacy brands
       'nike': { name: 'Nike', colors: ['#111111', '#FFFFFF', '#F5F5F5'], industry: 'Sportswear' },
       'cocacola': { name: 'Coca-Cola', colors: ['#F40009', '#FFFFFF', '#000000'], industry: 'Beverage' },
     }
