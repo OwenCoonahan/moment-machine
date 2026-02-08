@@ -69,10 +69,10 @@ interface GameStatus {
 }
 
 const MODELS = [
-  { id: 'flux-schnell', name: 'Flux Schnell', type: 'image', speed: 'Fast' },
-  { id: 'flux-pro', name: 'Flux Pro', type: 'image', speed: 'Quality' },
-  { id: 'grok-image', name: 'Grok Image', type: 'image', speed: 'Fast' },
-  { id: 'kling-video', name: 'Kling Video', type: 'video', speed: 'Slow' },
+  { id: 'flux-schnell', name: 'Flux Schnell', type: 'image', speed: 'Fast', estSeconds: 3 },
+  { id: 'flux-pro', name: 'Flux Pro', type: 'image', speed: 'Quality', estSeconds: 8 },
+  { id: 'grok-image', name: 'Grok Image', type: 'image', speed: 'Fast', estSeconds: 5 },
+  { id: 'kling-video', name: 'Kling Video', type: 'video', speed: '~45s', estSeconds: 45 },
 ]
 
 const ASPECT_RATIOS = [
@@ -118,6 +118,8 @@ function DashboardContent() {
   const [aspectRatio, setAspectRatio] = useState('square_hd')
   const [prompt, setPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
+  const [generationProgress, setGenerationProgress] = useState(0) // seconds elapsed
+  const [generationEstimate, setGenerationEstimate] = useState(0) // estimated total seconds
   const [content, setContent] = useState<ContentItem[]>([])
   const [autoGenerate, setAutoGenerate] = useState(false)
   const [latency, setLatency] = useState(0)
@@ -219,6 +221,20 @@ function DashboardContent() {
     return () => clearInterval(interval)
   }, [autoGenerate, activeCampaign])
 
+  // Generation progress timer
+  useEffect(() => {
+    if (!isGenerating) {
+      setGenerationProgress(0)
+      return
+    }
+    
+    const timer = setInterval(() => {
+      setGenerationProgress(prev => prev + 1)
+    }, 1000)
+    
+    return () => clearInterval(timer)
+  }, [isGenerating])
+
   const handleAddBrand = () => {
     if (!businessUrl) return
     const extracted = extractBrandFromUrl(businessUrl)
@@ -276,6 +292,10 @@ function DashboardContent() {
   const generateStudio = async (avatar?: Avatar) => {
     if (!brand.loaded) return
     
+    // Set estimated time based on model
+    const modelConfig = MODELS.find(m => m.id === selectedModel)
+    setGenerationEstimate(modelConfig?.estSeconds || 10)
+    setGenerationProgress(0)
     setIsGenerating(true)
     const startTime = Date.now()
     
@@ -625,6 +645,52 @@ function DashboardContent() {
 
           <Separator />
 
+          {/* Demo Event Triggers - Only show for demo campaigns */}
+          {activeCampaign?.gameId === 'demo' && (
+            <>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <Zap className="w-3.5 h-3.5" />
+                  Demo Events
+                </div>
+                <div className="space-y-1">
+                  {[
+                    { type: 'TOUCHDOWN', label: '🏈 Touchdown', team: 'KC' },
+                    { type: 'INTERCEPTION', label: '🔄 Interception', team: 'PHI' },
+                    { type: 'FUMBLE', label: '💥 Fumble', team: 'KC' },
+                    { type: 'FIELD_GOAL', label: '🥅 Field Goal', team: 'PHI' },
+                    { type: 'HALFTIME', label: '⏸️ Halftime', team: '' },
+                  ].map(event => (
+                    <button
+                      key={event.type}
+                      onClick={() => {
+                        setCurrentEvent({
+                          type: event.type,
+                          description: `${event.label} - ${event.team || 'Super Bowl LX'}`,
+                          team: event.team,
+                          timestamp: new Date()
+                        })
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-muted transition-colors"
+                    >
+                      {event.label}
+                    </button>
+                  ))}
+                </div>
+                <Button 
+                  size="sm" 
+                  className="w-full"
+                  onClick={() => generateStudio(selectedAvatar || undefined)}
+                  disabled={!currentEvent || isGenerating}
+                >
+                  <Zap className="w-3.5 h-3.5 mr-1.5" />
+                  Generate from Event
+                </Button>
+              </div>
+              <Separator />
+            </>
+          )}
+
           {/* Settings link */}
           <Button variant="ghost" className="w-full justify-start gap-2 text-muted-foreground">
             <Settings className="w-4 h-4" />
@@ -702,7 +768,7 @@ function DashboardContent() {
                     {isGenerating ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        Generating...
+                        {generationProgress}s / ~{generationEstimate}s
                       </>
                     ) : (
                       <>
