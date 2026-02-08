@@ -2,15 +2,60 @@ import { NextResponse } from 'next/server'
 
 const FAL_KEY = process.env.FAL_KEY
 
-// Real Fal.ai Flux image generation
-async function generateImageWithFlux(prompt: string): Promise<string | null> {
+interface GenerateRequest {
+  prompt: string
+  model: string
+  aspectRatio?: string
+  numImages?: number
+  brand?: {
+    name: string
+    industry?: string
+  }
+  event?: {
+    type: string
+    description: string
+  }
+}
+
+// Available models
+export const MODELS = {
+  // Image models
+  'flux-pro': { id: 'fal-ai/flux-pro/v1.1', name: 'Flux Pro', type: 'image', speed: 'fast' },
+  'flux-schnell': { id: 'fal-ai/flux/schnell', name: 'Flux Schnell', type: 'image', speed: 'fastest' },
+  'grok-image': { id: 'xai/grok-imagine-image', name: 'Grok Image', type: 'image', speed: 'fast' },
+  'ideogram': { id: 'fal-ai/ideogram/v2', name: 'Ideogram v2', type: 'image', speed: 'medium' },
+  
+  // Video models
+  'kling-video': { id: 'fal-ai/kling-video/v1.5/pro', name: 'Kling Video', type: 'video', speed: 'slow' },
+  'minimax-video': { id: 'fal-ai/minimax-video', name: 'MiniMax Video', type: 'video', speed: 'medium' },
+}
+
+// Generate image with Fal.ai
+async function generateWithFal(
+  model: string, 
+  prompt: string, 
+  aspectRatio: string = '1:1',
+  numImages: number = 1
+): Promise<{ url: string; model: string }[]> {
   if (!FAL_KEY) {
-    console.log('No FAL_KEY, using placeholder')
-    return null
+    console.log('No FAL_KEY - returning placeholder')
+    return Array(numImages).fill({ url: `https://picsum.photos/512/512?random=${Date.now()}`, model })
+  }
+
+  const modelConfig = MODELS[model as keyof typeof MODELS] || MODELS['flux-schnell']
+  
+  // Map aspect ratio to size
+  const sizeMap: Record<string, string> = {
+    '1:1': 'square_hd',
+    '4:3': 'landscape_4_3',
+    '3:4': 'portrait_4_3',
+    '16:9': 'landscape_16_9',
+    '9:16': 'portrait_16_9',
   }
 
   try {
-    const response = await fetch('https://queue.fal.run/fal-ai/flux-pro/v1.1', {
+    // Use synchronous endpoint for speed
+    const response = await fetch(`https://fal.run/${modelConfig.id}`, {
       method: 'POST',
       headers: {
         'Authorization': `Key ${FAL_KEY}`,
@@ -18,59 +63,45 @@ async function generateImageWithFlux(prompt: string): Promise<string | null> {
       },
       body: JSON.stringify({
         prompt,
-        image_size: 'square_hd',
-        num_images: 1,
+        image_size: sizeMap[aspectRatio] || 'square_hd',
+        num_images: numImages,
         enable_safety_checker: true,
       }),
     })
 
     if (!response.ok) {
-      console.error('Fal.ai error:', response.status)
-      return null
+      const error = await response.text()
+      console.error('Fal.ai error:', response.status, error)
+      return Array(numImages).fill({ url: `https://picsum.photos/512/512?random=${Date.now()}`, model })
     }
 
     const data = await response.json()
     
-    // Handle queue response
-    if (data.request_id) {
-      // Poll for result
-      const resultUrl = `https://queue.fal.run/fal-ai/flux-pro/v1.1/requests/${data.request_id}`
-      
-      for (let i = 0; i < 30; i++) {
-        await new Promise(r => setTimeout(r, 1000))
-        const resultResponse = await fetch(resultUrl, {
-          headers: { 'Authorization': `Key ${FAL_KEY}` }
-        })
-        const result = await resultResponse.json()
-        
-        if (result.status === 'COMPLETED' && result.images?.[0]?.url) {
-          return result.images[0].url
-        }
-        if (result.status === 'FAILED') {
-          console.error('Fal.ai generation failed')
-          return null
-        }
-      }
-    }
-    
-    // Direct response
-    if (data.images?.[0]?.url) {
-      return data.images[0].url
+    if (data.images && data.images.length > 0) {
+      return data.images.map((img: { url: string }) => ({ url: img.url, model }))
     }
 
-    return null
+    return Array(numImages).fill({ url: `https://picsum.photos/512/512?random=${Date.now()}`, model })
   } catch (error) {
-    console.error('Fal.ai error:', error)
-    return null
+    console.error('Fal.ai generation error:', error)
+    return Array(numImages).fill({ url: `https://picsum.photos/512/512?random=${Date.now()}`, model })
   }
 }
 
-// Fast synchronous Fal.ai call
-async function generateImageFast(prompt: string): Promise<string | null> {
-  if (!FAL_KEY) return null
+// Generate video with Fal.ai
+async function generateVideoWithFal(
+  prompt: string,
+  model: string = 'minimax-video'
+): Promise<{ url: string; model: string } | null> {
+  if (!FAL_KEY) {
+    return null
+  }
+
+  const modelConfig = MODELS[model as keyof typeof MODELS] || MODELS['minimax-video']
 
   try {
-    const response = await fetch('https://fal.run/fal-ai/flux/schnell', {
+    // Queue the video generation (videos take longer)
+    const response = await fetch(`https://queue.fal.run/${modelConfig.id}`, {
       method: 'POST',
       headers: {
         'Authorization': `Key ${FAL_KEY}`,
@@ -78,112 +109,67 @@ async function generateImageFast(prompt: string): Promise<string | null> {
       },
       body: JSON.stringify({
         prompt,
-        image_size: 'square_hd',
-        num_images: 1,
+        duration: '5',
+        aspect_ratio: '16:9',
       }),
     })
 
+    if (!response.ok) {
+      console.error('Fal.ai video error:', response.status)
+      return null
+    }
+
     const data = await response.json()
-    return data.images?.[0]?.url || null
+    return { url: data.request_id || 'pending', model }
   } catch (error) {
-    console.error('Flux schnell error:', error)
+    console.error('Fal.ai video error:', error)
     return null
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const { event, brand, count = 10 } = await request.json()
-    
-    const content = []
-    const brandName = brand?.name || 'Your Business'
-    
-    // Generate content in parallel batches
-    const prompts = generatePrompts(event, brandName, count)
-    
-    // Use faster model for mass generation
-    const generateBatch = async (batchPrompts: string[]) => {
-      return Promise.all(
-        batchPrompts.map(async (prompt, i) => {
-          const type = i % 5 === 0 ? 'video' : 'image'
-          let url = null
-          
-          if (type === 'image' && FAL_KEY) {
-            url = await generateImageFast(prompt)
-          }
-          
-          return {
-            id: `content-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`,
-            type,
-            status: 'ready',
-            url: url || `https://picsum.photos/400/400?random=${Date.now()}-${i}`,
-            prompt,
-            caption: generateCaption(event, brandName),
-            hashtags: generateHashtags(event, brandName),
-            platform: ['instagram', 'twitter', 'tiktok', 'facebook'][i % 4]
-          }
-        })
-      )
-    }
-    
-    // Process in batches of 5 for speed
-    const batchSize = 5
-    for (let i = 0; i < prompts.length; i += batchSize) {
-      const batch = prompts.slice(i, i + batchSize)
-      const results = await generateBatch(batch)
-      content.push(...results)
+    const body: GenerateRequest = await request.json()
+    const { prompt, model, aspectRatio = '1:1', numImages = 1, brand, event } = body
+
+    // Build enhanced prompt with brand context
+    let enhancedPrompt = prompt
+    if (brand && event) {
+      enhancedPrompt = `Marketing content for ${brand.name} (${brand.industry || 'business'}): ${event.type} moment - ${event.description}. ${prompt}`
     }
 
-    return NextResponse.json({ 
-      content, 
-      generated: content.length,
-      usingRealGeneration: !!FAL_KEY
-    })
+    const modelConfig = MODELS[model as keyof typeof MODELS]
+    
+    if (modelConfig?.type === 'video') {
+      const video = await generateVideoWithFal(enhancedPrompt, model)
+      return NextResponse.json({
+        success: true,
+        type: 'video',
+        content: video ? [video] : [],
+        model,
+      })
+    } else {
+      const images = await generateWithFal(model || 'flux-schnell', enhancedPrompt, aspectRatio, numImages)
+      return NextResponse.json({
+        success: true,
+        type: 'image',
+        content: images,
+        model,
+      })
+    }
   } catch (error) {
     console.error('Generation error:', error)
-    return NextResponse.json({ error: 'Generation failed' }, { status: 500 })
+    return NextResponse.json({ success: false, error: 'Generation failed' }, { status: 500 })
   }
 }
 
-function generatePrompts(event: string, brandName: string, count: number): string[] {
-  const templates = [
-    `Marketing social media post for ${brandName}: Celebrating a ${event} moment. Bold colors, exciting, football theme, modern design, professional.`,
-    `Instagram story graphic for ${brandName}: ${event}! Special promotion, vibrant, eye-catching, with space for text overlay.`,
-    `TikTok thumbnail for ${brandName}: Reacting to ${event}, energetic, youthful, trending aesthetic.`,
-    `Twitter post image for ${brandName}: ${event} just happened! Minimalist, bold text, shareable design.`,
-    `Facebook ad for ${brandName}: ${event} celebration special offer, professional, trustworthy, clear call to action.`,
-    `Meme format for ${brandName}: Funny reaction to ${event}, relatable, viral potential, brand colors.`,
-    `Sports bar promotional graphic: ${event}! Come celebrate at ${brandName}, beer and wings, game day vibes.`,
-    `Restaurant special: ${event} deal at ${brandName}, food photography style, appetizing, promotional.`,
-  ]
-  
-  const prompts = []
-  for (let i = 0; i < count; i++) {
-    prompts.push(templates[i % templates.length])
-  }
-  return prompts
-}
-
-function generateCaption(event: string, brandName: string): string {
-  const templates = [
-    `${event}! 🏈 ${brandName} celebrates with you! Use code GAMEDAY for 15% off! 🔥`,
-    `That ${event} though! 😱 Time for ${brandName}! #SuperBowl`,
-    `${event} energy! 💪 Come celebrate at ${brandName}! 🎉`,
-    `BIG ${event} MOMENT! 🏆 ${brandName} has your back! Limited time offer inside! ⬇️`,
-    `DID YOU SEE THAT ${event}?! 🤯 ${brandName} is going crazy right now!`,
-  ]
-  return templates[Math.floor(Math.random() * templates.length)]
-}
-
-function generateHashtags(event: string, brandName: string): string[] {
-  return [
-    '#SuperBowl',
-    '#SuperBowlLX',
-    '#GameDay',
-    `#${brandName.replace(/[^a-zA-Z0-9]/g, '')}`,
-    `#${event.replace(/[^a-zA-Z0-9]/g, '')}`,
-    '#Football',
-    '#BigGame',
-    '#ChiefsVsEagles',
-  ]
+// GET endpoint to list available models
+export async function GET() {
+  return NextResponse.json({
+    models: Object.entries(MODELS).map(([key, value]) => ({
+      id: key,
+      ...value
+    })),
+    hasApiKey: !!FAL_KEY
+  })
 }

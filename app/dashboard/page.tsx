@@ -3,11 +3,11 @@
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { 
-  Zap, Play, Pause, Plus,
-  Image as ImageIcon, Video, Type, BarChart3, 
+  Zap, Play, Pause, Plus, X,
+  Image as ImageIcon, Video, Type, 
   Check, Clock, AlertCircle, Loader2,
   Send, ArrowLeft, Sparkles, Bomb, Calendar,
-  Twitter, Instagram
+  Settings, RefreshCw, ChevronDown
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -18,15 +18,13 @@ interface ContentItem {
   url?: string
   caption?: string
   platform?: string
-  quality: 'high' | 'mass'
-  scheduledFor?: Date
+  model?: string
 }
 
 interface Brand {
   name: string
   domain: string
   colors: string[]
-  voice: string
   industry: string
   loaded: boolean
 }
@@ -35,10 +33,30 @@ interface GameEvent {
   type: string
   description: string
   timestamp: Date
-  confidence: number
+  team?: string
 }
 
-// Brand extraction
+interface GameStatus {
+  homeTeam: { name: string; abbreviation: string; score: number }
+  awayTeam: { name: string; abbreviation: string; score: number }
+  period: number
+  clock: string
+}
+
+const MODELS = [
+  { id: 'flux-schnell', name: 'Flux Schnell', type: 'image', speed: 'Fastest' },
+  { id: 'flux-pro', name: 'Flux Pro', type: 'image', speed: 'Fast' },
+  { id: 'grok-image', name: 'Grok Image', type: 'image', speed: 'Fast' },
+  { id: 'kling-video', name: 'Kling Video', type: 'video', speed: 'Slow' },
+]
+
+const ASPECT_RATIOS = [
+  { id: '1:1', name: 'Square', desc: '1:1' },
+  { id: '4:3', name: 'Landscape', desc: '4:3' },
+  { id: '9:16', name: 'Story', desc: '9:16' },
+  { id: '16:9', name: 'Wide', desc: '16:9' },
+]
+
 function extractBrandFromUrl(url: string): Brand {
   try {
     const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`)
@@ -46,495 +64,471 @@ function extractBrandFromUrl(url: string): Brand {
     const brandName = domain.split('.')[0]
     
     const knownBrands: Record<string, Partial<Brand>> = {
-      'chipotle': { name: 'Chipotle', colors: ['#441500', '#A81612', '#FFFFFF'], voice: 'Bold, fresh, food-forward', industry: 'Restaurant' },
-      'mcdonalds': { name: "McDonald's", colors: ['#FFC72C', '#DA291C', '#27251F'], voice: 'Fun, family-friendly', industry: 'Restaurant' },
-      'dominos': { name: "Domino's", colors: ['#006491', '#E31837', '#FFFFFF'], voice: 'Fast, reliable, fun', industry: 'Restaurant' },
-      'buffalowildwings': { name: 'Buffalo Wild Wings', colors: ['#FFB612', '#000000'], voice: 'Sports, bold, social', industry: 'Sports Bar' },
-      'wingstop': { name: 'Wingstop', colors: ['#024731', '#FFD100'], voice: 'Flavor, bold, craveable', industry: 'Restaurant' },
+      'chipotle': { name: 'Chipotle', colors: ['#441500', '#A81612'], industry: 'Restaurant' },
+      'dominos': { name: "Domino's", colors: ['#006491', '#E31837'], industry: 'Restaurant' },
+      'wingstop': { name: 'Wingstop', colors: ['#024731', '#FFD100'], industry: 'Restaurant' },
     }
     
     const known = knownBrands[brandName.toLowerCase()]
-    if (known) {
-      return { name: known.name || brandName, domain, colors: known.colors || [], voice: known.voice || '', industry: known.industry || 'Business', loaded: true }
-    }
-    
     return {
-      name: brandName.charAt(0).toUpperCase() + brandName.slice(1),
+      name: known?.name || brandName.charAt(0).toUpperCase() + brandName.slice(1),
       domain,
-      colors: ['#18181b', '#ffffff', '#71717a'],
-      voice: 'Professional, engaging',
-      industry: 'Business',
+      colors: known?.colors || ['#18181b', '#ffffff'],
+      industry: known?.industry || 'Business',
       loaded: true
     }
   } catch {
-    return { name: '', domain: '', colors: [], voice: '', industry: '', loaded: false }
+    return { name: '', domain: '', colors: [], industry: '', loaded: false }
   }
 }
 
 function DashboardContent() {
   const searchParams = useSearchParams()
-  const urlParam = searchParams.get('url') || ''
   
+  // State
   const [activeTab, setActiveTab] = useState<'quality' | 'nuke'>('quality')
-  const [businessUrl, setBusinessUrl] = useState(urlParam)
-  const [brand, setBrand] = useState<Brand>({ name: '', domain: '', colors: [], voice: '', industry: '', loaded: false })
-  const [isArmed, setIsArmed] = useState(false)
+  const [businessUrl, setBusinessUrl] = useState('')
+  const [brand, setBrand] = useState<Brand>({ name: '', domain: '', colors: [], industry: '', loaded: false })
+  const [selectedModels, setSelectedModels] = useState<string[]>(['flux-schnell'])
+  const [aspectRatio, setAspectRatio] = useState('1:1')
+  const [prompt, setPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [content, setContent] = useState<ContentItem[]>([])
   const [scheduledContent, setScheduledContent] = useState<ContentItem[]>([])
   const [currentEvent, setCurrentEvent] = useState<GameEvent | null>(null)
+  const [gameStatus, setGameStatus] = useState<GameStatus | null>(null)
+  const [isArmed, setIsArmed] = useState(false)
   const [latency, setLatency] = useState(0)
-  const [totalGenerated, setTotalGenerated] = useState(0)
-  const [generationStartTime, setGenerationStartTime] = useState<Date | null>(null)
 
-  // Load saved brand
+  // Load brand from URL param
   useEffect(() => {
-    if (urlParam) {
-      const extracted = extractBrandFromUrl(urlParam)
-      setBrand(extracted)
-      setBusinessUrl(urlParam)
-    } else {
-      const saved = localStorage.getItem('momentMachineBrand')
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved)
-          setBrand(parsed)
-          setBusinessUrl(parsed.domain ? `https://${parsed.domain}` : '')
-        } catch {}
+    const url = searchParams.get('url')
+    if (url) {
+      setBusinessUrl(url)
+      setBrand(extractBrandFromUrl(url))
+    }
+  }, [searchParams])
+
+  // Poll ESPN for live game data when armed
+  useEffect(() => {
+    if (!isArmed) return
+    
+    const pollGame = async () => {
+      try {
+        const res = await fetch('/api/espn')
+        const data = await res.json()
+        
+        if (data.activeGames?.length > 0) {
+          const game = data.activeGames[0]
+          setGameStatus({
+            homeTeam: game.homeTeam,
+            awayTeam: game.awayTeam,
+            period: game.period,
+            clock: game.clock
+          })
+          
+          if (game.lastPlay && ['TOUCHDOWN', 'INTERCEPTION', 'FUMBLE', 'BIG_PLAY'].includes(game.lastPlay.type)) {
+            setCurrentEvent({
+              type: game.lastPlay.type,
+              description: game.lastPlay.description,
+              team: game.lastPlay.team,
+              timestamp: new Date()
+            })
+          }
+        }
+      } catch (e) {
+        console.error('ESPN poll error:', e)
       }
     }
-  }, [urlParam])
+    
+    pollGame()
+    const interval = setInterval(pollGame, 10000) // Poll every 10s
+    return () => clearInterval(interval)
+  }, [isArmed])
 
   const handleAddBrand = () => {
     if (!businessUrl) return
-    const extracted = extractBrandFromUrl(businessUrl)
-    setBrand(extracted)
-    localStorage.setItem('momentMachineBrand', JSON.stringify(extracted))
+    setBrand(extractBrandFromUrl(businessUrl))
   }
 
-  const detectEvent = useCallback((): GameEvent => {
-    const events = [
-      { type: 'TOUCHDOWN', description: 'Chiefs score — Mahomes to Kelce, 15 yards', confidence: 0.97 },
-      { type: 'TOUCHDOWN', description: 'Eagles score — Hurts rushing TD', confidence: 0.96 },
-      { type: 'FUMBLE', description: 'Fumble recovered at the 20 yard line', confidence: 0.94 },
-      { type: 'INTERCEPTION', description: 'Intercepted in the red zone!', confidence: 0.92 },
-      { type: 'FIELD GOAL', description: 'Field goal is good from 47 yards', confidence: 0.95 },
-    ]
-    const baseEvent = events[Math.floor(Math.random() * events.length)]
-    const event: GameEvent = { ...baseEvent, timestamp: new Date() }
-    setCurrentEvent(event)
-    return event
-  }, [])
+  const toggleModel = (modelId: string) => {
+    setSelectedModels(prev => 
+      prev.includes(modelId) 
+        ? prev.filter(m => m !== modelId)
+        : [...prev, modelId]
+    )
+  }
 
-  // HIGH QUALITY content generation (fewer, better pieces)
-  const generateHighQuality = useCallback(async (event: GameEvent) => {
+  // Generate content using real API
+  const generateContent = async () => {
+    if (!brand.loaded || selectedModels.length === 0) return
+    
     setIsGenerating(true)
-    const startTime = new Date()
-    setGenerationStartTime(startTime)
+    const startTime = Date.now()
     setContent([])
-    setTotalGenerated(0)
     
-    // Generate 5-10 high quality pieces
-    const totalToGenerate = Math.floor(Math.random() * 5) + 5
-    
-    for (let i = 0; i < totalToGenerate; i++) {
-      await new Promise(resolve => setTimeout(resolve, 300)) // Slower, more deliberate
-      
-      const types: ('video' | 'image' | 'text')[] = ['video', 'image', 'image', 'text']
-      const platforms = ['instagram', 'twitter', 'tiktok', 'story']
-      
-      const newItem: ContentItem = {
-        id: `hq-${i}`,
-        type: types[Math.floor(Math.random() * types.length)],
-        status: 'ready',
-        caption: generateHighQualityCaption(event, brand),
-        platform: platforms[Math.floor(Math.random() * platforms.length)],
-        quality: 'high'
-      }
-      
-      setContent(prev => [...prev, newItem])
-      setTotalGenerated(i + 1)
+    const event = currentEvent || {
+      type: 'TOUCHDOWN',
+      description: 'Demo touchdown event',
+      timestamp: new Date()
     }
     
-    setIsGenerating(false)
-    setLatency(Math.round((Date.now() - startTime.getTime()) / 1000))
-  }, [brand])
-
-  // CONTENT NUKE - mass generation
-  const generateNuke = useCallback(async (event: GameEvent) => {
-    setIsGenerating(true)
-    const startTime = new Date()
-    setGenerationStartTime(startTime)
-    setContent([])
-    setTotalGenerated(0)
+    const basePrompt = prompt || `Exciting ${brand.industry.toLowerCase()} marketing content celebrating a ${event.type}`
     
-    const totalToGenerate = Math.floor(Math.random() * 300) + 500
-    let generated = 0
+    try {
+      // Generate with each selected model
+      for (const modelId of selectedModels) {
+        const model = MODELS.find(m => m.id === modelId)
+        
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: basePrompt,
+            model: modelId,
+            aspectRatio,
+            numImages: activeTab === 'quality' ? 1 : 4,
+            brand: { name: brand.name, industry: brand.industry },
+            event
+          })
+        })
+        
+        const data = await res.json()
+        
+        if (data.success && data.content) {
+          const newItems: ContentItem[] = data.content.map((item: any, i: number) => ({
+            id: `${modelId}-${Date.now()}-${i}`,
+            type: model?.type || 'image',
+            status: 'ready',
+            url: item.url,
+            model: modelId,
+            caption: `${event.type}! ${brand.name} 🏈`,
+            platform: ['instagram', 'twitter', 'tiktok'][i % 3]
+          }))
+          
+          setContent(prev => [...prev, ...newItems])
+        }
+      }
+    } catch (error) {
+      console.error('Generation error:', error)
+    }
+    
+    setLatency(Math.round((Date.now() - startTime) / 1000))
+    setIsGenerating(false)
+  }
+
+  // Nuke mode - fast mass generation
+  const triggerNuke = async () => {
+    if (!brand.loaded) return
+    
+    setIsGenerating(true)
+    const startTime = Date.now()
+    setContent([])
+    
+    const event = currentEvent || {
+      type: 'TOUCHDOWN', 
+      description: 'Demo event',
+      timestamp: new Date()
+    }
+    
+    // Generate 100 items fast (simulated for demo speed)
+    const total = 500
     const batchSize = 50
     
-    while (generated < totalToGenerate) {
-      await new Promise(resolve => setTimeout(resolve, 20))
+    for (let i = 0; i < total; i += batchSize) {
+      await new Promise(r => setTimeout(r, 30))
       
-      const newItems: ContentItem[] = []
-      for (let i = 0; i < batchSize && generated < totalToGenerate; i++) {
-        generated++
-        const typeRoll = Math.random()
-        const type: 'image' | 'video' | 'text' = typeRoll < 0.4 ? 'video' : typeRoll < 0.8 ? 'image' : 'text'
-        
-        newItems.push({
-          id: `nuke-${generated}`,
-          type,
-          status: 'ready',
-          caption: `${event.type}! ${brand.name} 🏈`,
-          platform: ['instagram', 'twitter', 'tiktok', 'facebook'][Math.floor(Math.random() * 4)],
-          quality: 'mass'
-        })
-      }
+      const batch: ContentItem[] = Array(Math.min(batchSize, total - i)).fill(null).map((_, j) => ({
+        id: `nuke-${i + j}`,
+        type: Math.random() > 0.3 ? 'image' : 'video',
+        status: 'ready',
+        caption: `${event.type}! ${brand.name} 🏈`,
+        platform: ['instagram', 'twitter', 'tiktok', 'facebook'][Math.floor(Math.random() * 4)],
+        model: 'flux-schnell'
+      }))
       
-      setContent(prev => [...prev, ...newItems])
-      setTotalGenerated(generated)
+      setContent(prev => [...prev, ...batch])
     }
     
+    setLatency(Math.round((Date.now() - startTime) / 1000))
     setIsGenerating(false)
-    setLatency(Math.round((Date.now() - startTime.getTime()) / 1000))
-  }, [brand])
-
-  const triggerGeneration = () => {
-    if (!brand.loaded) return
-    const event = detectEvent()
-    if (activeTab === 'quality') {
-      generateHighQuality(event)
-    } else {
-      generateNuke(event)
-    }
   }
 
-  const scheduleContent = (item: ContentItem) => {
-    setScheduledContent(prev => [...prev, { ...item, status: 'scheduled', scheduledFor: new Date() }])
+  const scheduleItem = (item: ContentItem) => {
+    setScheduledContent(prev => [...prev, { ...item, status: 'scheduled' }])
     setContent(prev => prev.filter(c => c.id !== item.id))
   }
 
-  useEffect(() => {
-    if (!isGenerating || !generationStartTime) return
-    const interval = setInterval(() => {
-      setLatency(Math.round((Date.now() - generationStartTime.getTime()) / 1000))
-    }, 100)
-    return () => clearInterval(interval)
-  }, [isGenerating, generationStartTime])
-
-  const videoCount = content.filter(c => c.type === 'video').length
-  const imageCount = content.filter(c => c.type === 'image').length
-
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-white">
       {/* Header */}
-      <header className="border-b border-zinc-200 bg-white sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="text-zinc-400 hover:text-zinc-600 transition-colors">
-              <ArrowLeft className="w-4 h-4" />
-            </Link>
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 bg-zinc-900 rounded-md flex items-center justify-center">
-                <Zap className="w-4 h-4 text-white" />
-              </div>
-              <span className="font-medium text-zinc-900">Moment Machine</span>
-            </div>
+      <header className="h-14 border-b border-zinc-200 flex items-center px-4 sticky top-0 bg-white z-50">
+        <Link href="/" className="mr-3 text-zinc-400 hover:text-zinc-600">
+          <ArrowLeft className="w-4 h-4" />
+        </Link>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 bg-zinc-900 rounded flex items-center justify-center">
+            <Zap className="w-3.5 h-3.5 text-white" />
           </div>
-          
-          <div className="flex items-center gap-3">
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm ${isArmed ? 'bg-emerald-50 text-emerald-700' : 'bg-zinc-100 text-zinc-500'}`}>
-              <div className={`w-1.5 h-1.5 rounded-full ${isArmed ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-400'}`}></div>
-              {isArmed ? 'Armed' : 'Standby'}
+          <span className="font-medium text-sm">Moment Machine</span>
+        </div>
+        
+        <div className="ml-auto flex items-center gap-3">
+          {gameStatus && (
+            <div className="text-xs text-zinc-500 font-mono">
+              {gameStatus.awayTeam.abbreviation} {gameStatus.awayTeam.score} - {gameStatus.homeTeam.abbreviation} {gameStatus.homeTeam.score} • Q{gameStatus.period} {gameStatus.clock}
             </div>
-          </div>
+          )}
+          <button
+            onClick={() => setIsArmed(!isArmed)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+              isArmed ? 'bg-emerald-100 text-emerald-700' : 'bg-zinc-100 text-zinc-600'
+            }`}
+          >
+            <div className={`w-1.5 h-1.5 rounded-full ${isArmed ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-400'}`} />
+            {isArmed ? 'Live' : 'Standby'}
+          </button>
         </div>
       </header>
 
-      {/* Tab Navigation */}
-      <div className="bg-white border-b border-zinc-200">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="flex gap-1">
-            <button
-              onClick={() => setActiveTab('quality')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'quality' 
-                  ? 'border-zinc-900 text-zinc-900' 
-                  : 'border-transparent text-zinc-500 hover:text-zinc-700'
-              }`}
-            >
-              <Sparkles className="w-4 h-4" />
-              High-Quality
-            </button>
-            <button
-              onClick={() => setActiveTab('nuke')}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'nuke' 
-                  ? 'border-zinc-900 text-zinc-900' 
-                  : 'border-transparent text-zinc-500 hover:text-zinc-700'
-              }`}
-            >
-              <Bomb className="w-4 h-4" />
-              Content Nuke
-            </button>
+      {/* Tabs */}
+      <div className="border-b border-zinc-200">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="flex">
+            {[
+              { id: 'quality', label: 'Studio', icon: Sparkles },
+              { id: 'nuke', label: 'Nuke', icon: Bomb },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as 'quality' | 'nuke')}
+                className={`flex items-center gap-1.5 px-4 py-3 text-sm border-b-2 transition-colors ${
+                  activeTab === tab.id
+                    ? 'border-zinc-900 text-zinc-900 font-medium'
+                    : 'border-transparent text-zinc-500'
+                }`}
+              >
+                <tab.icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-6">
+      <div className="max-w-6xl mx-auto px-4 py-6">
         <div className="grid grid-cols-12 gap-6">
           
-          {/* Left Column - Setup */}
-          <div className="col-span-12 lg:col-span-4 space-y-4">
+          {/* Left Panel - Configuration */}
+          <div className="col-span-4 space-y-4">
             
-            {/* Brand Setup */}
-            <div className="bg-white border border-zinc-200 rounded-xl p-5">
-              <h3 className="font-medium text-zinc-900 mb-4">Brand Setup</h3>
-              
-              <div className="space-y-3">
+            {/* Brand */}
+            <div className="border border-zinc-200 rounded-lg p-4">
+              <div className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-3">Brand</div>
+              <div className="flex gap-2">
                 <input
-                  type="url"
                   value={businessUrl}
-                  onChange={(e) => setBusinessUrl(e.target.value)}
+                  onChange={e => setBusinessUrl(e.target.value)}
                   placeholder="yourbusiness.com"
-                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
+                  className="flex-1 text-sm border border-zinc-200 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-zinc-400"
                 />
-                
                 <button
                   onClick={handleAddBrand}
-                  className="w-full bg-zinc-900 hover:bg-zinc-800 text-white px-4 py-2.5 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-colors"
+                  className="px-3 py-2 bg-zinc-900 text-white text-sm rounded hover:bg-zinc-800"
                 >
-                  <Plus className="w-4 h-4" />
-                  Add Brand
+                  Add
                 </button>
-                
-                {brand.loaded && (
-                  <div className="bg-zinc-50 rounded-lg p-4 space-y-2 animate-fade-in">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-zinc-500">Brand</span>
-                      <span className="font-medium text-zinc-900">{brand.name}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-zinc-500">Industry</span>
-                      <span className="text-sm text-zinc-700">{brand.industry}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-zinc-500">Colors</span>
-                      <div className="flex gap-1">
-                        {brand.colors.slice(0, 3).map((color, i) => (
-                          <div key={i} className="w-4 h-4 rounded-full border border-zinc-200" style={{ backgroundColor: color }}></div>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-emerald-600 text-sm pt-2">
-                      <Check className="w-3.5 h-3.5" />
-                      Ready
-                    </div>
+              </div>
+              {brand.loaded && (
+                <div className="mt-3 flex items-center gap-2 text-sm">
+                  <div className="flex gap-0.5">
+                    {brand.colors.map((c, i) => (
+                      <div key={i} className="w-3 h-3 rounded-full" style={{ backgroundColor: c }} />
+                    ))}
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* Event Trigger */}
-            <div className="bg-white border border-zinc-200 rounded-xl p-5">
-              <h3 className="font-medium text-zinc-900 mb-4">Event Trigger</h3>
-              
-              <div className="space-y-3">
-                <button
-                  onClick={() => setIsArmed(!isArmed)}
-                  className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${
-                    isArmed 
-                      ? 'bg-emerald-500 text-white' 
-                      : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
-                  }`}
-                >
-                  {isArmed ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                  {isArmed ? 'Disarm' : 'Arm System'}
-                </button>
-                
-                <button
-                  onClick={triggerGeneration}
-                  disabled={!brand.loaded || isGenerating}
-                  className="w-full bg-zinc-900 hover:bg-zinc-800 disabled:bg-zinc-200 disabled:text-zinc-400 text-white px-4 py-2.5 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-colors"
-                >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="w-4 h-4" />
-                      Trigger Demo
-                    </>
-                  )}
-                </button>
-                
-                {currentEvent && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                    <div className="flex items-center gap-2 text-amber-700 font-medium text-sm mb-1">
-                      <AlertCircle className="w-4 h-4" />
-                      {currentEvent.type}
-                    </div>
-                    <p className="text-sm text-amber-600">{currentEvent.description}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Scheduled Posts */}
-            <div className="bg-white border border-zinc-200 rounded-xl p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-medium text-zinc-900">Scheduled</h3>
-                <span className="text-xs text-zinc-400">{scheduledContent.length} posts</span>
-              </div>
-              
-              {scheduledContent.length === 0 ? (
-                <p className="text-sm text-zinc-400 text-center py-4">No scheduled posts</p>
-              ) : (
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {scheduledContent.slice(0, 5).map(item => (
-                    <div key={item.id} className="flex items-center gap-2 p-2 bg-zinc-50 rounded-lg text-sm">
-                      {item.type === 'video' && <Video className="w-4 h-4 text-blue-500" />}
-                      {item.type === 'image' && <ImageIcon className="w-4 h-4 text-zinc-400" />}
-                      {item.type === 'text' && <Twitter className="w-4 h-4 text-zinc-400" />}
-                      <span className="flex-1 truncate text-zinc-600">{item.platform}</span>
-                      <Calendar className="w-3 h-3 text-zinc-400" />
-                    </div>
-                  ))}
+                  <span className="font-medium">{brand.name}</span>
+                  <span className="text-zinc-400">• {brand.industry}</span>
                 </div>
               )}
-              
-              <button 
-                disabled={scheduledContent.length === 0}
-                className="w-full mt-3 bg-zinc-900 hover:bg-zinc-800 disabled:bg-zinc-200 disabled:text-zinc-400 text-white px-4 py-2.5 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-colors"
-              >
-                <Send className="w-4 h-4" />
-                Post All Now
-              </button>
             </div>
+
+            {activeTab === 'quality' && (
+              <>
+                {/* Models */}
+                <div className="border border-zinc-200 rounded-lg p-4">
+                  <div className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-3">Models</div>
+                  <div className="space-y-1.5">
+                    {MODELS.map(model => (
+                      <button
+                        key={model.id}
+                        onClick={() => toggleModel(model.id)}
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm text-left transition-colors ${
+                          selectedModels.includes(model.id)
+                            ? 'bg-zinc-100'
+                            : 'hover:bg-zinc-50'
+                        }`}
+                      >
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center ${
+                          selectedModels.includes(model.id) ? 'bg-zinc-900 border-zinc-900' : 'border-zinc-300'
+                        }`}>
+                          {selectedModels.includes(model.id) && <Check className="w-3 h-3 text-white" />}
+                        </div>
+                        <span className="flex-1">{model.name}</span>
+                        <span className="text-xs text-zinc-400">{model.type}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Prompt */}
+                <div className="border border-zinc-200 rounded-lg p-4">
+                  <div className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-3">Prompt</div>
+                  <textarea
+                    value={prompt}
+                    onChange={e => setPrompt(e.target.value)}
+                    placeholder="Describe the content you want..."
+                    className="w-full text-sm border border-zinc-200 rounded px-3 py-2 h-24 resize-none focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                  />
+                </div>
+
+                {/* Aspect Ratio */}
+                <div className="border border-zinc-200 rounded-lg p-4">
+                  <div className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-3">Aspect Ratio</div>
+                  <div className="flex gap-2">
+                    {ASPECT_RATIOS.map(ar => (
+                      <button
+                        key={ar.id}
+                        onClick={() => setAspectRatio(ar.id)}
+                        className={`flex-1 py-2 text-xs rounded border transition-colors ${
+                          aspectRatio === ar.id
+                            ? 'border-zinc-900 bg-zinc-900 text-white'
+                            : 'border-zinc-200 hover:border-zinc-300'
+                        }`}
+                      >
+                        {ar.desc}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Event */}
+            {currentEvent && (
+              <div className="border border-amber-200 bg-amber-50 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-amber-700 text-sm font-medium mb-1">
+                  <AlertCircle className="w-4 h-4" />
+                  {currentEvent.type}
+                </div>
+                <p className="text-sm text-amber-600">{currentEvent.description}</p>
+              </div>
+            )}
+
+            {/* Generate Button */}
+            <button
+              onClick={activeTab === 'quality' ? generateContent : triggerNuke}
+              disabled={!brand.loaded || isGenerating}
+              className="w-full py-3 bg-zinc-900 text-white rounded-lg font-medium text-sm hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4" />
+                  {activeTab === 'quality' ? 'Generate' : 'Launch Nuke'}
+                </>
+              )}
+            </button>
           </div>
 
-          {/* Right Column - Content */}
-          <div className="col-span-12 lg:col-span-8 space-y-4">
+          {/* Right Panel - Output */}
+          <div className="col-span-8">
             
             {/* Stats */}
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-4 gap-3 mb-4">
               {[
-                { label: 'Generated', value: totalGenerated, highlight: true },
+                { label: 'Generated', value: content.length },
                 { label: 'Latency', value: `${latency}s` },
-                { label: 'Videos', value: videoCount },
-                { label: 'Images', value: imageCount },
-              ].map((stat) => (
-                <div key={stat.label} className="bg-white border border-zinc-200 rounded-xl p-4">
-                  <div className="text-xs text-zinc-500 mb-1">{stat.label}</div>
-                  <div className={`text-xl font-semibold counter ${stat.highlight ? 'text-zinc-900' : 'text-zinc-700'}`}>
-                    {stat.value}
-                  </div>
+                { label: 'Scheduled', value: scheduledContent.length },
+                { label: 'Models', value: selectedModels.length },
+              ].map(stat => (
+                <div key={stat.label} className="border border-zinc-200 rounded-lg p-3">
+                  <div className="text-xs text-zinc-400">{stat.label}</div>
+                  <div className="text-lg font-semibold font-mono">{stat.value}</div>
                 </div>
               ))}
             </div>
 
-            {/* Tab-specific content */}
-            {activeTab === 'quality' ? (
-              /* HIGH QUALITY TAB */
-              <div className="bg-white border border-zinc-200 rounded-xl p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="font-medium text-zinc-900">High-Quality Content</h3>
-                    <p className="text-xs text-zinc-500 mt-0.5">Curated posts ready for review</p>
-                  </div>
-                  <span className="text-sm text-zinc-400">{content.length} items</span>
+            {/* Content Area */}
+            <div className="border border-zinc-200 rounded-lg min-h-[400px]">
+              {content.length === 0 ? (
+                <div className="h-[400px] flex flex-col items-center justify-center text-zinc-400">
+                  <ImageIcon className="w-8 h-8 mb-2 opacity-30" />
+                  <p className="text-sm">No generations yet</p>
                 </div>
-                
-                {content.length === 0 ? (
-                  <div className="text-center py-12 text-zinc-400">
-                    <Sparkles className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">Generate high-quality content</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {content.map((item) => (
-                      <div key={item.id} className="flex items-start gap-3 p-3 bg-zinc-50 rounded-lg">
-                        <div className="w-10 h-10 bg-zinc-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                          {item.type === 'video' && <Video className="w-5 h-5 text-blue-500" />}
-                          {item.type === 'image' && <ImageIcon className="w-5 h-5 text-zinc-500" />}
-                          {item.type === 'text' && <Type className="w-5 h-5 text-purple-500" />}
+              ) : activeTab === 'quality' ? (
+                <div className="p-4 grid grid-cols-2 gap-4">
+                  {content.map(item => (
+                    <div key={item.id} className="border border-zinc-200 rounded-lg overflow-hidden">
+                      <div className="aspect-square bg-zinc-100 flex items-center justify-center">
+                        {item.url ? (
+                          <img src={item.url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          item.type === 'video' 
+                            ? <Video className="w-8 h-8 text-zinc-300" />
+                            : <ImageIcon className="w-8 h-8 text-zinc-300" />
+                        )}
+                      </div>
+                      <div className="p-3">
+                        <div className="flex items-center gap-2 text-xs text-zinc-400 mb-2">
+                          <span className="capitalize">{item.model}</span>
+                          <span>•</span>
+                          <span className="capitalize">{item.platform}</span>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-medium text-zinc-500 uppercase">{item.platform}</span>
-                            <span className="text-xs text-zinc-400">• {item.type}</span>
-                          </div>
-                          <p className="text-sm text-zinc-700 truncate">{item.caption}</p>
-                        </div>
-                        <button 
-                          onClick={() => scheduleContent(item)}
-                          className="px-3 py-1.5 bg-zinc-900 text-white text-xs font-medium rounded-md hover:bg-zinc-800 transition-colors"
+                        <p className="text-sm text-zinc-700 truncate">{item.caption}</p>
+                        <button
+                          onClick={() => scheduleItem(item)}
+                          className="mt-2 w-full py-1.5 text-xs bg-zinc-900 text-white rounded hover:bg-zinc-800"
                         >
                           Schedule
                         </button>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : (
-              /* CONTENT NUKE TAB */
-              <div className="bg-white border border-zinc-200 rounded-xl p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="font-medium text-zinc-900">Content Nuke</h3>
-                    <p className="text-xs text-zinc-500 mt-0.5">Mass-generated content</p>
-                  </div>
-                  <span className="text-sm text-zinc-400">{content.length} items</span>
+                    </div>
+                  ))}
                 </div>
-                
-                {content.length === 0 ? (
-                  <div className="text-center py-12 text-zinc-400">
-                    <Bomb className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">Trigger a content nuke</p>
-                  </div>
-                ) : (
-                  <div className="content-grid" style={{ maxHeight: '350px', overflowY: 'auto' }}>
+              ) : (
+                <div className="p-4">
+                  <div className="grid grid-cols-8 gap-1.5 max-h-[350px] overflow-y-auto">
                     {content.slice(0, 200).map((item, i) => (
-                      <div 
-                        key={item.id} 
-                        className="content-item animate-pop"
+                      <div
+                        key={item.id}
+                        className="aspect-square bg-zinc-100 rounded flex items-center justify-center"
                         style={{ animationDelay: `${(i % 50) * 10}ms` }}
                       >
-                        {item.type === 'video' && <Video className="w-4 h-4 text-blue-500" />}
-                        {item.type === 'image' && <ImageIcon className="w-4 h-4 text-zinc-400" />}
-                        {item.type === 'text' && <Type className="w-4 h-4 text-purple-500" />}
+                        {item.type === 'video' 
+                          ? <Video className="w-3 h-3 text-blue-400" />
+                          : <ImageIcon className="w-3 h-3 text-zinc-400" />
+                        }
                       </div>
                     ))}
                     {content.length > 200 && (
-                      <div className="content-item bg-zinc-200 text-zinc-600 text-xs font-medium">
+                      <div className="aspect-square bg-zinc-200 rounded flex items-center justify-center text-xs font-medium text-zinc-500">
                         +{content.length - 200}
                       </div>
                     )}
                   </div>
-                )}
-                
-                {content.length > 0 && (
-                  <button className="w-full mt-4 bg-zinc-900 hover:bg-zinc-800 text-white px-4 py-2.5 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-colors">
-                    <Send className="w-4 h-4" />
-                    Deploy All {content.length} Posts
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* Summary */}
-            {totalGenerated > 0 && (
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-                <p className="text-center text-sm text-emerald-700">
-                  <span className="font-medium">{brand.name}</span> generated{' '}
-                  <span className="font-medium">{totalGenerated}</span> {activeTab === 'quality' ? 'high-quality' : ''} content pieces in{' '}
-                  <span className="font-medium">{latency}s</span>
-                </p>
-              </div>
-            )}
+                  {content.length > 0 && (
+                    <button className="mt-4 w-full py-2.5 bg-zinc-900 text-white rounded-lg font-medium text-sm hover:bg-zinc-800 flex items-center justify-center gap-2">
+                      <Send className="w-4 h-4" />
+                      Deploy All {content.length}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -542,22 +536,11 @@ function DashboardContent() {
   )
 }
 
-function generateHighQualityCaption(event: GameEvent, brand: Brand): string {
-  const templates = [
-    `${event.type}! 🏈 ${brand.name} is celebrating with you. Use code GAMEDAY for 15% off your next order!`,
-    `What a moment! ${event.description} — ${brand.name} has your game day covered. Link in bio!`,
-    `That ${event.type} though! 😱 Celebrate at ${brand.name}. Special game day menu available now.`,
-    `${event.type} energy at ${brand.name}! 🔥 Tag someone you're watching with.`,
-    `Big play alert: ${event.description} 🏆 Come watch the rest at ${brand.name}!`,
-  ]
-  return templates[Math.floor(Math.random() * templates.length)]
-}
-
 export default function DashboardPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-zinc-50 flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-5 h-5 animate-spin text-zinc-400" />
       </div>
     }>
       <DashboardContent />
