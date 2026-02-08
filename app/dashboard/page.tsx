@@ -722,11 +722,13 @@ function DashboardContent() {
           )}
 
           {/* Settings link */}
-          <Button variant="ghost" className="w-full justify-start gap-2 text-muted-foreground">
-            <Settings className="w-4 h-4" />
-            Settings
-            <ChevronRight className="w-4 h-4 ml-auto" />
-          </Button>
+          <Link href="/settings">
+            <Button variant="ghost" className="w-full justify-start gap-2 text-muted-foreground">
+              <Settings className="w-4 h-4" />
+              Settings
+              <ChevronRight className="w-4 h-4 ml-auto" />
+            </Button>
+          </Link>
         </aside>
 
         {/* Main Content */}
