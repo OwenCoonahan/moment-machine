@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { 
   Zap, ArrowLeft, Loader2, Upload, Palette, Globe,
   Image as ImageIcon, Video, Send, Clock, Settings,
-  Sparkles, Bomb, ChevronRight, ExternalLink, Users, Plus, TrendingUp, Film, Play, Download
+  Sparkles, Bomb, ChevronRight, ExternalLink, Users, Plus, TrendingUp, Film, Play, Download, X
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -197,6 +197,7 @@ function DashboardContent() {
   const [availableBuckets, setAvailableBuckets] = useState<string[]>([])
   const [availableFolders, setAvailableFolders] = useState<string[]>([])
   const [activeTab, setActiveTab] = useState('studio')
+  const [playingClip, setPlayingClip] = useState<ClipItem | null>(null)
 
   // Load campaigns and avatars
   useEffect(() => {
@@ -1459,12 +1460,16 @@ function DashboardContent() {
                       <Card key={clip.id} className="overflow-hidden group">
                         <div className="aspect-square bg-muted relative">
                           {clip.type === 'video' ? (
-                            <div className="w-full h-full relative">
+                            <div 
+                              className="w-full h-full relative cursor-pointer"
+                              onClick={() => setPlayingClip(clip)}
+                            >
                               <video 
                                 src={clip.url} 
                                 className="w-full h-full object-cover"
                                 muted
                                 loop
+                                playsInline
                                 onMouseEnter={(e) => e.currentTarget.play()}
                                 onMouseLeave={(e) => {
                                   e.currentTarget.pause()
@@ -1472,7 +1477,7 @@ function DashboardContent() {
                                 }}
                               />
                               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <div className="w-12 h-12 rounded-full bg-black/50 flex items-center justify-center group-hover:opacity-0 transition-opacity">
+                                <div className="w-12 h-12 rounded-full bg-black/50 flex items-center justify-center group-hover:scale-110 transition-transform">
                                   <Play className="w-5 h-5 text-white ml-0.5" />
                                 </div>
                               </div>
@@ -1575,6 +1580,60 @@ function DashboardContent() {
         }}
         content={contentToPost}
       />
+      
+      {/* Video Player Modal */}
+      {playingClip && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+          onClick={() => setPlayingClip(null)}
+        >
+          <div className="relative w-full max-w-4xl mx-4" onClick={e => e.stopPropagation()}>
+            {/* Close button */}
+            <button
+              onClick={() => setPlayingClip(null)}
+              className="absolute -top-12 right-0 text-white/80 hover:text-white transition-colors"
+            >
+              <X className="w-8 h-8" />
+            </button>
+            
+            {/* Video player */}
+            <video
+              src={playingClip.url}
+              className="w-full rounded-lg"
+              controls
+              autoPlay
+              playsInline
+            />
+            
+            {/* Video info */}
+            <div className="mt-4 flex items-center justify-between text-white">
+              <div>
+                <p className="font-medium">{playingClip.name}</p>
+                <p className="text-sm text-white/60">
+                  {playingClip.folder && <span className="mr-2">{playingClip.folder}</span>}
+                  {playingClip.size > 0 && `${(playingClip.size / 1024 / 1024).toFixed(1)}MB`}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <a href={playingClip.url} download={playingClip.name}>
+                  <Button variant="secondary" size="sm">
+                    <Download className="w-4 h-4 mr-1" />
+                    Download
+                  </Button>
+                </a>
+                <Button 
+                  variant="secondary" 
+                  size="sm"
+                  onClick={() => window.open(playingClip.url, '_blank')}
+                >
+                  <ExternalLink className="w-4 h-4 mr-1" />
+                  Open
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
